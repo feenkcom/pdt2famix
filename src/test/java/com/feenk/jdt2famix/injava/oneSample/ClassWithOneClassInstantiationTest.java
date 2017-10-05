@@ -1,0 +1,32 @@
+package com.feenk.jdt2famix.injava.oneSample;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
+
+import com.feenk.jdt2famix.model.famix.Invocation;
+import com.feenk.jdt2famix.model.famix.Method;
+import com.feenk.jdt2famix.samples.basic.ClassWithOneClassInstantiation;
+
+public class ClassWithOneClassInstantiationTest extends OneSampleTestCase {
+
+	@Override
+	protected Class<?> sampleClass() {
+		return ClassWithOneClassInstantiation.class;
+	}
+	
+	@Test
+	public void testInvocation() {
+		assertEquals(1, methodNamed("method").getOutgoingInvocations().size());
+		Invocation invocation = methodNamed("method").getOutgoingInvocations().stream().findAny().get();
+		Method defaultConstructor = (Method) invocation.getCandidates().stream().findAny().get();
+		assertNotNull(defaultConstructor);
+		assertEquals("constructor", defaultConstructor.getKind());
+		assertTrue(defaultConstructor.getIsStub());
+		assertEquals(ClassWithOneClassInstantiation.class.getSimpleName(), defaultConstructor.getName());
+		assertEquals(type, defaultConstructor.getParentType());
+	}
+
+}
