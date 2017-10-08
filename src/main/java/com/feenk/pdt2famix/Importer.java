@@ -9,7 +9,6 @@ import com.feenk.pdt2famix.NamedEntityAccumulator;
 import com.feenk.pdt2famix.model.famix.Type;
 import ch.akuhn.fame.Repository;
 
-
 public class Importer {	
 	
 	private Repository repository;
@@ -42,17 +41,7 @@ public class Importer {
 	public void run(JavaFiles javaFiles, Classpath classpath) {
 		ignoredRootPath = javaFiles.ignoredRootPath().replaceAll("\\\\", "/");
 		ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1);
-//		parser.setResolveBindings(true);
-//		parser.setKind();
-//		Map<String, String> options = JavaCore.getOptions();
-//		options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_8);
-//		options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_8);
-//		options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_8);
-//		parser.setCompilerOptions(options);
-//		
-//		parser.setEnvironment(classpath.paths(), new String[]{}, new String[]{}, true);
-//		IProgressManager progressManager; 
-//		parser.createAST(javaFiles.paths(), null, new String[0], getRequestor(javaFiles), null);
+		parser.createAST(null);
 	}
 
 	public void run(JavaFiles javaFiles) {
