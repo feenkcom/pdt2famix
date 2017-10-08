@@ -22,12 +22,12 @@ public class Main {
 		JavaFiles javaFiles = new JavaFiles();
 		javaFiles.deepJavaFiles(path.toString());
 		Classpath classpath = new Classpath();
-		classpath.deepJarFiles(path.toString());
+		//classpath.deepJarFiles(path.toString());
 		logger.trace("importing root folder - " + path.toString());
 		importer.run(javaFiles, classpath);
-		logger.trace("exporting - " + mseFileName);
-		importer.exportMSE(mseFileName);
-		logger.trace("done");
+		//logger.trace("exporting - " + mseFileName);
+		//importer.exportMSE(mseFileName);
+		//logger.trace("done");
 	}
 
 }

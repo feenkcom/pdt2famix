@@ -1,5 +1,13 @@
 package com.feenk.pdt2famix;
 
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.eclipse.php.core.PHPVersion;
 import org.eclipse.php.core.ast.nodes.ASTParser;
 
@@ -8,9 +16,11 @@ import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.NamedEntityAccumulator;
 import com.feenk.pdt2famix.model.famix.Type;
 import ch.akuhn.fame.Repository;
+import org.eclipse.php.core.ast.nodes.Program;
 
 public class Importer {	
-	
+	private static final Logger logger = LogManager.getLogger(Main.class);
+	 
 	private Repository repository;
 	public Repository repository() { return repository; }
 	
@@ -41,7 +51,20 @@ public class Importer {
 	public void run(JavaFiles javaFiles, Classpath classpath) {
 		ignoredRootPath = javaFiles.ignoredRootPath().replaceAll("\\\\", "/");
 		ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1);
-		parser.createAST(null);
+		Program program = null;
+		try {
+			for (String aFile: javaFiles.paths()) {
+				logger.trace(aFile);
+				FileReader fileReader = new FileReader(aFile);
+				
+				parser.setSource(fileReader);
+
+				program = parser.createAST(null);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
 	}
 
 	public void run(JavaFiles javaFiles) {

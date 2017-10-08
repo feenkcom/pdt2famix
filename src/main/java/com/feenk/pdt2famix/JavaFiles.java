@@ -32,7 +32,7 @@ public class JavaFiles {
 				all.addAll(deepJavaFilesIn(child));
 			}
 			else {
-				if (child.getName().endsWith(".java"))
+				if (child.getName().endsWith(".php"))
 					all.add(child.getAbsolutePath());
 			} 
 		}
