@@ -1,7 +1,5 @@
 package com.feenk.pdt2famix.test;
 
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Test;
 
 import com.feenk.pdt2famix.test.support.InPhpTestCase;
@@ -13,12 +11,8 @@ public class NamespacesTwoInDistinctFilesTest extends InPhpTestCase {
 	}
 	
 	@Test
-	public void testTwoNamespace() {
-		assertEquals(2, importer.namespaces().size());
-	}
-	
-	@Test
 	public void testNamespacesStructure() {
+		assertNamespacesPresent(new String[] {"namespace1", "namespace2"});
 		assertEmptyNamespace("namespace1");
 		assertEmptyNamespace("namespace2");
 	}

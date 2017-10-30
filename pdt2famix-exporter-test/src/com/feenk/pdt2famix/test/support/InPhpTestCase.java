@@ -1,9 +1,12 @@
 package com.feenk.pdt2famix.test.support;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,26 +31,52 @@ import org.junit.BeforeClass;
 
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Namespace;
+import com.feenk.pdt2famix.model.famix.Type;
 
 public abstract class InPhpTestCase {
 	private static final String PROJECT_NAME = "pdt2famix-exporter-samples";
 	private static final String SAMPLES_LOCATION = "/" + PROJECT_NAME + "/samples/";
 	
+	protected static final String EMPTY_NAMESPACE_NAME = "";
+	
 	protected Importer importer;
 	
 	
-	// ASSERTIONS
+	// ASSERTIONS NAMESPACES
 	
-	public void assertEmptyNamespace(String qualifiedName) {
+	protected void assertNamespacePresent(String namespaceQualifiedName) {
+		Namespace obtainedNamespace = null;
+		
+		assertTrue(importer.namespaces().has(namespaceQualifiedName));
+		
+		obtainedNamespace = importer.namespaces().named(namespaceQualifiedName);
+		assertEquals(basenameNameFrom(namespaceQualifiedName), obtainedNamespace.getName());
+		assertEquals(true, obtainedNamespace.getIsStub());
+	}
+	
+	protected void assertNamespaceStructure(String namespaceQualifiedName, String parentNamespaceQualifiedName) {
+		Namespace obtainedNamespace = null;
+		Namespace parentNamespace = null;
+		
+		assertNamespacePresent(namespaceQualifiedName);
+		 obtainedNamespace = importer.namespaces().named(namespaceQualifiedName);
+		if (parentNamespaceQualifiedName != null) {
+			assertTrue(importer.namespaces().has(parentNamespaceQualifiedName));
+			parentNamespace = importer.namespaces().named(parentNamespaceQualifiedName);
+		}
+		assertEquals(parentNamespace, obtainedNamespace.getParentScope());
+	}
+	
+	protected void assertEmptyNamespace(String qualifiedName) {
 		assertEmptyNamespace(qualifiedName, null);
 	}
 	
-	public void assertEmptyNamespace(String namespaceQualifiedName, String parentNamespaceQualifiedName) {
-		Namespace obtainedNamespace = importer.namespaces().named(namespaceQualifiedName);
-		Namespace parentNamespace = null;
+	protected void assertEmptyNamespace(String namespaceQualifiedName, String parentNamespaceQualifiedName) {
+		Namespace obtainedNamespace;
 		
-		assertEquals(namespaceNameFrom(namespaceQualifiedName), obtainedNamespace.getName());
-		assertEquals(true, obtainedNamespace.getIsStub());
+		assertNamespaceStructure(namespaceQualifiedName, parentNamespaceQualifiedName);
+		
+		obtainedNamespace = importer.namespaces().named(namespaceQualifiedName);
 		assertEquals(0, obtainedNamespace.getGlobalVariables().size());
 		assertEquals(0, obtainedNamespace.getTypes().size());
 		assertEquals(0, obtainedNamespace.getFunctions().size());
@@ -55,22 +84,46 @@ public abstract class InPhpTestCase {
 		assertEquals(0, obtainedNamespace.getDefinedAnnotationTypes().size());
 		assertEquals(0, obtainedNamespace.getComments().size());
 		assertEquals(0, obtainedNamespace.getAnnotationInstances().size());
-		
-		if (parentNamespaceQualifiedName != null) {
-			parentNamespace = importer.namespaces().named(parentNamespaceQualifiedName);
-		}
-		assertEquals(parentNamespace, obtainedNamespace.getParentScope());
 	}
 	
+	protected void assertNamespacesPresent(String[] namespacesQualifiedNames) {
+		assertEquals(namespacesQualifiedNames.length, importer.namespaces().size());
+		Arrays.asList(namespacesQualifiedNames).stream().forEach(
+			qualifiedNamespaceName -> assertNamespacePresent(qualifiedNamespaceName));
+		
+	}
 	
-	private String namespaceNameFrom(String namespaceQualifiedName) {
-		int lastIndexOfBackslash = namespaceQualifiedName.lastIndexOf("\\");
+	protected void assertNamespaceTypes(String namespaceQualifiedName, String[] typesQualifiedNames) {
+		Namespace namespace = importer.namespaces().named(namespaceQualifiedName);
+		Collection<Type> obtainedTypes = namespace.getTypes();
+		ArrayList<Type>  expectedTypes = new ArrayList<>();
+		
+		Arrays.asList(typesQualifiedNames).stream().forEach(
+			typeQualifiedName -> assertEquals(namespace, importer.types().named(typeQualifiedName).getContainer()));
+		
+		Arrays.asList(typesQualifiedNames).stream().forEach(
+			typeQualifiedName -> expectedTypes.add(importer.types().named(typeQualifiedName)));
+		assertArrayEquals(expectedTypes.toArray(), obtainedTypes.toArray());
+	}
+	
+	// ASSERTIONS CLASSES
+	
+	protected void assertClassPresent(String classQualifiedname) {
+		Type classType = importer.types().named(classQualifiedname);
+		
+		assertEquals(basenameNameFrom(classQualifiedname), classType.getName());
+		assertEquals(false, classType.getIsStub());
+		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
+		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class)(classType)).getIsInterface());
+	}
+	
+	private String basenameNameFrom(String qualifiedName) {
+		int lastIndexOfBackslash = qualifiedName.lastIndexOf("\\");
 		Namespace namespace = new Namespace();
-		namespace.setIsStub(true);
-		if (lastIndexOfBackslash <= 0) {
-			return namespaceQualifiedName;
+		if (lastIndexOfBackslash < 0) {
+			return qualifiedName;
 		} else {
-			return namespaceQualifiedName.substring(lastIndexOfBackslash+1);
+			return qualifiedName.substring(lastIndexOfBackslash+1);
 		}
 	}
 	

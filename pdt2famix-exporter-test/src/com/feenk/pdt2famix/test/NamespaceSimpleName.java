@@ -1,7 +1,5 @@
 package com.feenk.pdt2famix.test;
 
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Test;
 
 import com.feenk.pdt2famix.test.support.InPhpTestCase;
@@ -13,12 +11,8 @@ public class NamespaceSimpleName extends InPhpTestCase {
 	}
 	
 	@Test
-	public void testOneNamespace() {
-		assertEquals(1, importer.namespaces().size());
-	}
-	
-	@Test
 	public void testNamespaceStructure() {
+		assertNamespacesPresent(new String[] {"name"});
 		assertEmptyNamespace("name");
 	}
 }

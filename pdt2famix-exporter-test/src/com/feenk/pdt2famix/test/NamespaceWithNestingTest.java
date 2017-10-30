@@ -1,7 +1,5 @@
 package com.feenk.pdt2famix.test;
 
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Test;
 
 import com.feenk.pdt2famix.test.support.InPhpTestCase;
@@ -13,12 +11,8 @@ public class NamespaceWithNestingTest extends InPhpTestCase {
 	}
 	
 	@Test
-	public void testTwoNamespace() {
-		assertEquals(3, importer.namespaces().size());
-	}
-	
-	@Test
 	public void testNamespacesStructure() {
+		assertNamespacesPresent(new String[] {"root", "root\\nesting", "root\\nesting\\leaf"});
 		assertEmptyNamespace("root");
 		assertEmptyNamespace("root\\nesting", "root");
 		assertEmptyNamespace("root\\nesting\\leaf", "root\\nesting");
