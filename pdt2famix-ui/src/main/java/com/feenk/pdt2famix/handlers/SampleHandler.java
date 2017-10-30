@@ -48,7 +48,7 @@ public class SampleHandler extends AbstractHandler {
 		String mseFileName = projectPath.segment(projectPath.segmentCount() - 1) + ".mse";
 		importer.exportMSE(
 			ResourcesPlugin.getWorkspace().getRoot().getLocation().toString() +
-			project.getFullPath().toString() +
+			//project.getFullPath().toString() +
 			"/"+
 			mseFileName);
 		

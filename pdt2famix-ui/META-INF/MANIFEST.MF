@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: pdt2famix-plugin
-Bundle-SymbolicName: pdt2famix-plugin;singleton:=true
+Bundle-SymbolicName: pdt2famix-ui;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: pdt2famix_plugin.Activator
 Require-Bundle: pdt2famix-exporter;bundle-version="1.0.0",

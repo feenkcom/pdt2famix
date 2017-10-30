@@ -6,25 +6,25 @@
          point="org.eclipse.ui.commands">
       <category
             name="Sample Category"
-            id="pdt2famix-plugin.commands.category">
+            id="pdt2famix-ui.commands.category">
       </category>
       <command
             name="Sample Command"
-            categoryId="pdt2famix-plugin.commands.category"
-            id="pdt2famix-plugin.commands.sampleCommand">
+            categoryId="pdt2famix-ui.commands.category"
+            id="pdt2famix-ui.commands.sampleCommand">
       </command>
    </extension>
    <extension
          point="org.eclipse.ui.handlers">
       <handler
-            commandId="pdt2famix-plugin.commands.sampleCommand"
+            commandId="pdt2famix-ui.commands.sampleCommand"
             class="com.feenk.pdt2famix.handlers.SampleHandler">
       </handler>
    </extension>
    <extension
          point="org.eclipse.ui.bindings">
       <key
-            commandId="pdt2famix-plugin.commands.sampleCommand"
+            commandId="pdt2famix-ui.commands.sampleCommand"
             contextId="org.eclipse.ui.contexts.window"
             sequence="M1+6"
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration">
@@ -37,23 +37,23 @@
          <menu
                label="Sample Menu"
                mnemonic="M"
-               id="pdt2famix-plugin.menus.sampleMenu">
+               id="pdt2famix-ui.menus.sampleMenu">
             <command
-                  commandId="pdt2famix-plugin.commands.sampleCommand"
+                  commandId="pdt2famix-ui.commands.sampleCommand"
                   mnemonic="S"
-                  id="pdt2famix-plugin.menus.sampleCommand">
+                  id="pdt2famix-ui.menus.sampleCommand">
             </command>
          </menu>
       </menuContribution>
       <menuContribution
             locationURI="toolbar:org.eclipse.ui.main.toolbar?after=additions">
          <toolbar
-               id="pdt2famix-plugin.toolbars.sampleToolbar">
+               id="pdt2famix-ui.toolbars.sampleToolbar">
             <command
-                  commandId="pdt2famix-plugin.commands.sampleCommand"
+                  commandId="pdt2famix-ui.commands.sampleCommand"
                   icon="icons/sample.png"
                   tooltip="Say hello world"
-                  id="pdt2famix-plugin.toolbars.sampleCommand">
+                  id="pdt2famix-ui.toolbars.sampleCommand">
             </command>
          </toolbar>
       </menuContribution>
