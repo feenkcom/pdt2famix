@@ -1,12 +1,12 @@
 package com.feenk.pdt2famix.test.support;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,7 +16,6 @@ import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.dltk.core.DLTKCore;
 import org.eclipse.dltk.core.IScriptProject;
 import org.eclipse.jdt.core.IClasspathEntry;
 import org.eclipse.jdt.core.IJavaProject;
@@ -30,15 +29,14 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.feenk.pdt2famix.Importer;
+import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Type;
 
 public abstract class InPhpTestCase {
 	private static final String PROJECT_NAME = "pdt2famix-exporter-samples";
 	private static final String SAMPLES_LOCATION = "/" + PROJECT_NAME + "/samples/";
-	
-	protected static final String EMPTY_NAMESPACE_NAME = "";
-	
+		
 	protected Importer importer;
 	
 	
@@ -50,7 +48,7 @@ public abstract class InPhpTestCase {
 		assertTrue(importer.namespaces().has(namespaceQualifiedName));
 		
 		obtainedNamespace = importer.namespaces().named(namespaceQualifiedName);
-		assertEquals(basenameNameFrom(namespaceQualifiedName), obtainedNamespace.getName());
+		assertEquals(importer.namepaceBasenameFrom(namespaceQualifiedName), obtainedNamespace.getName());
 		assertEquals(true, obtainedNamespace.getIsStub());
 	}
 	
@@ -86,14 +84,14 @@ public abstract class InPhpTestCase {
 		assertEquals(0, obtainedNamespace.getAnnotationInstances().size());
 	}
 	
-	protected void assertNamespacesPresent(String[] namespacesQualifiedNames) {
+	protected void assertNamespacesPresent(String... namespacesQualifiedNames) {
 		assertEquals(namespacesQualifiedNames.length, importer.namespaces().size());
 		Arrays.asList(namespacesQualifiedNames).stream().forEach(
 			qualifiedNamespaceName -> assertNamespacePresent(qualifiedNamespaceName));
 		
 	}
 	
-	protected void assertNamespaceTypes(String namespaceQualifiedName, String[] typesQualifiedNames) {
+	protected void assertNamespaceTypes(String namespaceQualifiedName, String ...typesQualifiedNames) {
 		Namespace namespace = importer.namespaces().named(namespaceQualifiedName);
 		Collection<Type> obtainedTypes = namespace.getTypes();
 		ArrayList<Type>  expectedTypes = new ArrayList<>();
@@ -103,7 +101,8 @@ public abstract class InPhpTestCase {
 		
 		Arrays.asList(typesQualifiedNames).stream().forEach(
 			typeQualifiedName -> expectedTypes.add(importer.types().named(typeQualifiedName)));
-		assertArrayEquals(expectedTypes.toArray(), obtainedTypes.toArray());
+		assertEquals(new HashSet<Type>(expectedTypes), new HashSet<Type>(obtainedTypes));
+		//assertArrayEquals(expectedTypes.toArray(), obtainedTypes.toArray());
 	}
 	
 	// ASSERTIONS CLASSES
@@ -111,22 +110,47 @@ public abstract class InPhpTestCase {
 	protected void assertClassPresent(String classQualifiedname) {
 		Type classType = importer.types().named(classQualifiedname);
 		
-		assertEquals(basenameNameFrom(classQualifiedname), classType.getName());
+		assertEquals(importer.entityBasenameFrom(classQualifiedname), classType.getName());
 		assertEquals(false, classType.getIsStub());
 		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
 		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class)(classType)).getIsInterface());
 	}
 	
-	private String basenameNameFrom(String qualifiedName) {
-		int lastIndexOfBackslash = qualifiedName.lastIndexOf("\\");
-		Namespace namespace = new Namespace();
-		if (lastIndexOfBackslash < 0) {
-			return qualifiedName;
-		} else {
-			return qualifiedName.substring(lastIndexOfBackslash+1);
-		}
+	protected void assertClassMethods(String qualifiedClassName, String ...localMethodNames) {
+		Type famixClass = importer.types().named(qualifiedClassName);
+		Collection<Method> obtainedMethods = famixClass.getMethods();
+		ArrayList<Method>  expectedMethods = new ArrayList<>();
+		
+		Arrays.asList(localMethodNames).stream().forEach(
+				localQualifiedName -> {
+					String methodQualifiedName = makeQualifiedNameFrom(qualifiedClassName, localQualifiedName);
+					assertEquals(
+						famixClass, 
+						importer.methods().named(methodQualifiedName).getParentType());
+					expectedMethods.add(importer.methods().named(methodQualifiedName)); 
+				});
+		
+		assertEquals(new HashSet<>(expectedMethods), new HashSet<>(obtainedMethods));
 	}
 	
+	// ASSERTIONS METHODS
+	
+	protected void assertMethod(String methodQualifiedName, String[] strings) {
+		Method method;
+		
+		assertTrue(importer.methods().has(methodQualifiedName));
+		method = importer.methods().named(methodQualifiedName);
+		
+		assertEquals(importer.entityBasenameFrom(methodQualifiedName), method.getName());
+		assertEquals(false, method.getHasClassScope() == null ? false : method.getHasClassScope() );
+		assertEquals(null, method.getKind());
+	}
+
+	// UTILS
+	
+	protected String makeQualifiedNameFrom(String containerQualifiedName, String entityName) {
+		return Importer.makeQualifiedNameFrom(containerQualifiedName, entityName);
+	}
 	
 	/**
 	 * Ensure that there is a test project.
@@ -197,17 +221,28 @@ public abstract class InPhpTestCase {
 		javaProject.setRawClasspath(newEntries, null);
 	}
 	
+	
+	protected abstract String sampleDirectory();
+	
+	
+//	private IProject project;
+//	private IScriptProject projectPHP;
+	
 	@Before
 	public void setUp() throws Exception {
-		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		IProject project = root.getProject(PROJECT_NAME);
-		project.open(null /* IProgressMonitor */);
-		IScriptProject projectPHP = DLTKCore.create(project);
-
-		importer = new Importer();
+//		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
+//		project = root.getProject(PROJECT_NAME);
+//		project.open(null /* IProgressMonitor */);
+//		projectPHP = DLTKCore.create(project);
+		
+		IScriptProject projectPHP = ProjectHolder.getProject(PROJECT_NAME);
+		importer = new Importer(projectPHP);
 		importer.run(projectPHP, Arrays.asList(new String[] { SAMPLES_LOCATION + 	sampleDirectory() }));
 	}
 	
-	protected abstract String sampleDirectory();
-
+//	@After
+//	public void tearDown() throws Exception {
+//		projectPHP.close();
+//		project.close(null);
+//	}
 }

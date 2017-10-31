@@ -3,23 +3,35 @@ package com.feenk.pdt2famix;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.function.Consumer;
 
 import org.eclipse.dltk.core.IModelElement;
+import org.eclipse.dltk.core.INamespace;
 import org.eclipse.dltk.core.IParent;
 import org.eclipse.dltk.core.IProjectFragment;
 import org.eclipse.dltk.core.IScriptProject;
 import org.eclipse.dltk.core.ISourceModule;
+import org.eclipse.dltk.core.IType;
+import org.eclipse.dltk.core.ModelException;
+import org.eclipse.dltk.core.index2.search.ISearchEngine.MatchRule;
+import org.eclipse.dltk.core.search.IDLTKSearchScope;
+import org.eclipse.dltk.core.search.SearchEngine;
 import org.eclipse.php.core.PHPVersion;
 import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.ASTParser;
+import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.Program;
 import org.eclipse.php.core.ast.visitor.Visitor;
+import org.eclipse.php.core.compiler.PHPFlags;
+import org.eclipse.php.core.compiler.ast.nodes.NamespaceReference;
+import org.eclipse.php.internal.core.model.PHPModelAccess;
 
 import com.feenk.pdt2famix.inphp.AstVisitor;
 import com.feenk.pdt2famix.model.famix.Attribute;
@@ -31,6 +43,7 @@ import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.NamedEntity;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.PrimitiveType;
+import com.feenk.pdt2famix.model.famix.ScopingEntity;
 import com.feenk.pdt2famix.model.famix.SourcedEntity;
 import com.feenk.pdt2famix.model.famix.Type;
 import com.feenk.pdt2famix.model.java.JavaModel;
@@ -42,6 +55,11 @@ import pdt2famix_exporter.Activator;
 public class Importer {	
 	private static final Activator logger = Activator.getDefault();
 	 
+	private static final char NAME_SEPARATOR = '$';
+	private static final char NAMESPACE_SEPARATOR = NamespaceReference.NAMESPACE_SEPARATOR;
+	private static final String CONSTRUCTOR_KIND = "constructor";
+	public static final String DEFAULT_NAMESPACE_NAME = "";
+	
 	private Repository repository;
 	public Repository repository() { return repository; }
 	
@@ -80,8 +98,20 @@ public class Importer {
 	public void containerStackForEach(Consumer<? super ContainerEntity> action) {
 		containerStack.stream().forEachOrdered(action);
 	}
+	public ContainerEntity topOfContainerStackOrDefaultNamespace() {
+		if (this.containerStack.isEmpty()==false) {
+			return topOfContainerStack();
+		}
+		return ensureNamespaceNamed(DEFAULT_NAMESPACE_NAME);
+	}
 	
-	public Importer() {
+	
+	private IScriptProject scriptProject;
+	public IScriptProject getScriptProject() {
+		return scriptProject;
+	}
+	
+	public Importer(IScriptProject projectPHP) {
 		MetaRepository metaRepository = new MetaRepository();
 		FAMIXModel.importInto(metaRepository);
 		JavaModel.importInto(metaRepository);
@@ -92,6 +122,8 @@ public class Importer {
 		types = new NamedEntityAccumulator<Type>(repository);
 		methods = new NamedEntityAccumulator<Method>(repository);
 		attributes = new NamedEntityAccumulator<Attribute>(repository);
+		
+		scriptProject = projectPHP; 
 	}
 	
 	//NAMESPACE
@@ -108,7 +140,7 @@ public class Importer {
 	}
 	
 	private Namespace createNamespaceNamed(String qualifiedName) {
-		int lastIndexOfBackslash = qualifiedName.lastIndexOf("\\");
+		int lastIndexOfBackslash = qualifiedName.lastIndexOf(NAMESPACE_SEPARATOR);
 		Namespace namespace = new Namespace();
 		namespace.setIsStub(true);
 		if (lastIndexOfBackslash <= 0)
@@ -124,10 +156,10 @@ public class Importer {
 		return namespace;
 	}
 	
-	// TYPES
+	// TYPE
 	
 	public Type ensureTypeFromTypeBinding(ITypeBinding binding) {
-		String qualifiedName =  getQualifiedName(binding);
+		String qualifiedName = getQualifiedNameForBinding(binding);
 		if (types.has(qualifiedName)) { 
 			return types.named(qualifiedName); };
 			
@@ -138,8 +170,25 @@ public class Importer {
 		if (binding.isAmbiguous()) {
 			System.out.println();
 		}
-		IModelElement modelElement = binding.getPHPElement();
-	
+		
+//		Experiments
+//		IModelElement modelElement = binding.getPHPElement();
+//		String delimiter = NamespaceReference.NAMESPACE_DELIMITER;
+//		String fullName = ((IType)modelElement).getFullyQualifiedName();
+//		INamespace namespace = null;
+//		try {
+//			namespace = ((IType)modelElement).getNamespace();
+//		} catch (ModelException e) {
+//			e.printStackTrace();
+//		}
+//		((IType)modelElement.getParent()).getFullyQualifiedName();
+//		binding.getKey();
+//		binding.getEvaluatedType();
+//		IDLTKSearchScope scope = SearchEngine.createSearchScope(getScriptProject());
+//		Arrays.asList(PHPModelAccess.getDefault().
+//				findTypes("", binding.getName(), MatchRule.EXACT, 0, 0, scope, null));
+		
+		
 		//extractBasicModifiersFromBinding(binding.getModifiers(), type);
 		type.setContainer(ensureContainerEntityForTypeBinding(binding));
 //		if (binding.getSuperclass() != null) 
@@ -149,6 +198,7 @@ public class Importer {
 //		}
 		return type;
 	}
+	
 	private Type createTypeFromTypeBinding(ITypeBinding binding) {
 		//TODO: binding.isAmbiguous()
 		//TODO: binding.isTrait()
@@ -163,10 +213,81 @@ public class Importer {
 		
 		com.feenk.pdt2famix.model.famix.Class clazz = new com.feenk.pdt2famix.model.famix.Class();
 		clazz.setIsInterface(binding.isInterface());
+		
 		return clazz;
 	}
 	
+	
+	// METHOD
+	
+	public Method ensureMethodFromMethodBindingToCurrentContainer(IMethodBinding methodBinding) {
+		return ensureMethodFromMethodBinding(methodBinding, (Type) topOfContainerStack());
+	}
+	
+	public Method ensureMethodFromMethodBinding(IMethodBinding methodBinding, Type parentType) {
+		String methodName = methodBinding.getName();
+		return ensureBasicMethod(
+				methodName,  
+				parentType,
+				famixMethod -> setUpMethodFromMethodBinding(famixMethod, methodBinding));
+	}
+	
+	private void setUpMethodFromMethodBinding(Method method, IMethodBinding binding) {
+		if (binding.isConstructor()) 
+			method.setKind(CONSTRUCTOR_KIND);
+		ITypeBinding[] returnTypes = binding.getReturnType();
+		
+//		if ((returnType != null) && !(returnType.isPrimitive() && returnType.getName().equals("void")))
+//			//we do not want to set void as a return type
+//			method.setDeclaredType(ensureTypeFromTypeBinding(returnType));
+		
+		extractBasicModifiersFromBinding(binding.getModifiers(), method);
+		if (PHPFlags.isStatic(binding.getModifiers()))
+			method.setHasClassScope(true);
+//		try {
+//			IAnnotationBinding[] annotations = binding.getAnnotations();
+//			createAnnotationInstancesToEntityFromAnnotationBinding(method, annotations);
+//		} catch(NullPointerException e) {
+//			/* This happens in some very strange circumstances, likely due to missing dependencies.
+//			 * The only solution I found was to catch the exception and log it and provide people
+//			 * with a way to solve it by adding the missing dependencies to the import.
+//			 */
+//			logNullBinding("annotation instances for method binding", Famix.qualifiedNameOf(method) , -1);
+//		}
+	}
+	
+	public Method ensureBasicMethod(String methodName, Type parentType, Consumer<Method> ifAbsent) {
+		String qualifiedName = qualifiedFAMIXNameOf(parentType) + NAME_SEPARATOR + methodName;
+		if(methods.has(qualifiedName))
+			return methods.named(qualifiedName);
+		Method method = new Method();
+		method.setName(methodName);
+		methods.add(qualifiedName, method);
+//		method.setSignature(signature);
+		method.setIsStub(true);
+		method.setParentType(parentType);
+		ifAbsent.accept(method);
+		return method;
+	}
+	
+	
 	private void extractBasicModifiersFromBinding(int modifiers, NamedEntity entity) {
+		if (PHPFlags.isPublic(modifiers) || PHPFlags.isDefault(modifiers)) {
+			entity.addModifiers("public"); //$NON-NLS-1$
+		}
+		if (PHPFlags.isProtected(modifiers)) {
+			entity.addModifiers("protected"); //$NON-NLS-1$
+		}
+		if (PHPFlags.isPrivate(modifiers)) {
+			entity.addModifiers("private"); //$NON-NLS-1$
+		}
+		if (PHPFlags.isAbstract(modifiers)) {
+			entity.addModifiers("abstract"); //$NON-NLS-1$
+		}
+		if (PHPFlags.isFinal(modifiers)) {
+			entity.addModifiers("final"); //$NON-NLS-1$
+		}
+		
 //		Boolean publicModifier = Modifier.isPublic(modifiers);
 //		Boolean protectedModifier = Modifier.isProtected(modifiers);
 //		Boolean privateModifier = Modifier.isPrivate(modifiers);
@@ -213,11 +334,75 @@ public class Importer {
 		repository.add(fileAnchor);
 	}
 
-	public String getQualifiedName(ITypeBinding binding) {
-		StringBuilder qualifiedName = new StringBuilder();
-		containerStackForEach(container -> 
-			 qualifiedName.append("\\" + container.getName()));
-		return qualifiedName + "\\" + binding.getName();
+	/**
+	 * I return the qualified name of an entity as computed by PDT.
+	 */
+	public String getQualifiedNameForBinding(ITypeBinding binding) {
+		IModelElement modelElement = binding.getPHPElement();
+		if (modelElement instanceof IType) {
+			return ((IType)modelElement).getFullyQualifiedName();
+		}
+		throw new RuntimeException("No qualified name can be computed");
+		//return qualifiedFAMIXNameOf(topOfContainerStackOrDefaultNamespace()) + NAME_SEPARATOR + binding.getName();
+	}
+	
+	/**
+	 * This is a method that manually tries to compute the qualified name for a binding 
+	 * based on the current stack of containers. This is used to ensure that the qualified
+	 * names generated by IType#getFullyQualifiedName() are as expected.
+	 */
+	public String computeQualifiedNameForBinding(ITypeBinding binding) {
+		String qualifiedContainerName = qualifiedFAMIXNameOf(topOfContainerStackOrDefaultNamespace());
+		return makeQualifiedNameFrom(qualifiedContainerName, binding.getName());
+	}
+	
+	public static String makeQualifiedNameFrom(String containerQualifiedName, String entityName) {
+		return containerQualifiedName.isEmpty() ? entityName : containerQualifiedName + NAME_SEPARATOR + entityName ;
+	}
+	
+	public static String qualifiedFAMIXNameOf(ContainerEntity containerEntity) {	
+		if (containerEntity instanceof Type)
+			return qualifiedFAMIXNameOf((Type) containerEntity);
+		if (containerEntity instanceof ScopingEntity)
+			return qualifiedFAMIXNameOf((ScopingEntity) containerEntity);
+		if (containerEntity instanceof Method)
+			return qualifiedFAMIXNameOf((Method) containerEntity);
+	
+		throw new RuntimeException("TODO: "+containerEntity.getName());
+	}
+	
+	public static String qualifiedNameOf(Method method) {
+		return makeQualifiedNameFrom(qualifiedFAMIXNameOf(method.getParentType()), method.getName());
+	}
+	
+	public static String qualifiedFAMIXNameOf(Type type) {	
+		if (type.getContainer() instanceof Type)
+			return qualifiedFAMIXNameOf((Type) type.getContainer()) + NAME_SEPARATOR + type.getName();
+		return makeQualifiedNameFrom(qualifiedFAMIXNameOf((ScopingEntity) type.getContainer()), type.getName());
+	}
+	
+	public static String qualifiedFAMIXNameOf(ScopingEntity container) {
+		if (container.getParentScope() != null)
+			return qualifiedFAMIXNameOf(container.getParentScope()) + NAMESPACE_SEPARATOR + container.getName();
+		return container.getName();
+	}
+	
+	public String entityBasenameFrom(String qualifiedName) {
+		int lastIndexOfSeparator = qualifiedName.lastIndexOf(NAME_SEPARATOR);
+		if (lastIndexOfSeparator < 0) {
+			return qualifiedName;
+		} else {
+			return qualifiedName.substring(lastIndexOfSeparator+1);
+		}
+	}
+	
+	public String namepaceBasenameFrom(String qualifiedName) {
+		int lastIndexOfSeparator = qualifiedName.lastIndexOf(NAMESPACE_SEPARATOR);
+		if (lastIndexOfSeparator < 0) {
+			return qualifiedName;
+		} else {
+			return qualifiedName.substring(lastIndexOfSeparator+1);
+		}
 	}
 	
 	// EXPORT

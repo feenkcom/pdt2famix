@@ -8,7 +8,7 @@ public class Main {
     //private static final Logger logger = LogManager.getLogger(Main.class);
 	
 	public static void main(String[] args) {
-		Importer importer = new Importer();
+//		Importer importer = new Importer();
 		String pathName;
 		if (args.length > 0)
 			pathName = args[0];
