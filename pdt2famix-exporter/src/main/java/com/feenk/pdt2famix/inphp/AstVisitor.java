@@ -107,6 +107,8 @@ public class AstVisitor extends AbstractVisitor {
 		ITypeBinding declatingClass  = methodBinding.getDeclaringClass();
 		ITypeBinding[] returnType    = methodBinding.getReturnType();
 		
+		//returnType[0].isPrimitive();
+		
 		IModelElement modelElement = methodBinding.getPHPElement();
 		logger.trace(((IMethod)modelElement).getFullyQualifiedName());
 		logger.trace(methodBinding.getKey()); 

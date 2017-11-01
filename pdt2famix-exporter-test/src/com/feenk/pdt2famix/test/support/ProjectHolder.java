@@ -23,6 +23,8 @@ public class ProjectHolder {
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 		project = root.getProject(projectName);
 		project.open(null /* IProgressMonitor */);
+		project.close(null /* IProgressMonitor */);
+		project.open(null /* IProgressMonitor */);
 		project.refreshLocal(IResource.DEPTH_INFINITE, null);
 		projectPHP = DLTKCore.create(project); 
 	}

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.StringJoiner;
 import java.util.function.Consumer;
 
+import org.eclipse.dltk.core.IMember;
 import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.dltk.core.INamespace;
 import org.eclipse.dltk.core.IParent;
@@ -38,6 +39,7 @@ import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.ContainerEntity;
 import com.feenk.pdt2famix.model.famix.FAMIXModel;
 import com.feenk.pdt2famix.model.famix.FileAnchor;
+import com.feenk.pdt2famix.model.famix.Inheritance;
 import com.feenk.pdt2famix.model.famix.JavaSourceLanguage;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.NamedEntity;
@@ -75,10 +77,12 @@ public class Importer {
 	private NamedEntityAccumulator<Attribute> attributes;
 	public NamedEntityAccumulator<Attribute> attributes() {return attributes;}
 	
-	private String currentFilePath;
-	public String getCurrentFilePath() {return currentFilePath;}
-	public void setCurrentFilePath(String currentFilePath) {this.currentFilePath = currentFilePath;}
+	private ISourceModule currentSourceModel;
+	public ISourceModule getCurrentSourceModel() {return currentSourceModel;}
+	public void setCurrentSourceModel(ISourceModule currentSourceModel) {this.currentSourceModel = currentSourceModel;}
 	
+	public String getCurrentFilePath() {return getCurrentSourceModel().getPath().makeAbsolute().toString(); }
+		
 	/**
 	 * This is a structure that keeps track of the current stack of containers
 	 * It is particularly useful when we deal with inner or anonymous classes
@@ -129,28 +133,30 @@ public class Importer {
 	//NAMESPACE
 	
 	public Namespace ensureNamespaceFromNamespaceDeclaration(NamespaceDeclaration declaration) {
-		return ensureNamespaceNamed(declaration.getName() == null ? "" : declaration.getName().getName());
+//		String sourceIdentifier = getCurrentSourceModel().getHandleIdentifier();
+		String namespaceQualifiedName = declaration.getName() == null ? DEFAULT_NAMESPACE_NAME : declaration.getName().getName();
+		return ensureNamespaceNamed(namespaceQualifiedName);
 	}
 	
-	public Namespace ensureNamespaceNamed(String qualifiedName) {
-		if (namespaces.has(qualifiedName)) 
-			return namespaces.named(qualifiedName);
+	public Namespace ensureNamespaceNamed(String namespaceQualifiedName) {
+		if (namespaces.has(namespaceQualifiedName)) 
+			return namespaces.named(namespaceQualifiedName);
 		else
-			return namespaces.add(qualifiedName, createNamespaceNamed(qualifiedName));
+			return namespaces.add(namespaceQualifiedName, createNamespaceNamed(namespaceQualifiedName));
 	}
 	
 	private Namespace createNamespaceNamed(String qualifiedName) {
-		int lastIndexOfBackslash = qualifiedName.lastIndexOf(NAMESPACE_SEPARATOR);
+		int lastIndexOfSeparator = qualifiedName.lastIndexOf(NAMESPACE_SEPARATOR);
 		Namespace namespace = new Namespace();
 		namespace.setIsStub(true);
-		if (lastIndexOfBackslash <= 0)
+		if (lastIndexOfSeparator <= 0)
 			namespace.setName(qualifiedName);
 		else {
-			/* Namespaces in PHP can be nested.
-			 * In Famix, namespaces are also nested. So we create nesting based on the \ separator.
+			/* PHP namespaces are not nested, even though they look like they are.
+			 * But, in Famix, namespaces are nested. So we create nesting based on the namespace separator
 			 */
-			namespace.setName(qualifiedName.substring(lastIndexOfBackslash+1));
-			Namespace parentNamespace = ensureNamespaceNamed(qualifiedName.substring(0, lastIndexOfBackslash));
+			namespace.setName(qualifiedName.substring(lastIndexOfSeparator+1));
+			Namespace parentNamespace = ensureNamespaceNamed(qualifiedName.substring(0, lastIndexOfSeparator));
 			namespace.setParentScope(parentNamespace);
 		}
 		return namespace;
@@ -163,10 +169,16 @@ public class Importer {
 		if (types.has(qualifiedName)) { 
 			return types.named(qualifiedName); };
 			
-		Type type = createTypeFromTypeBinding(binding);
-		type.setName(binding.getName());
-		types.add(qualifiedName, type);
-		type.setIsStub(true);
+		Type famixType = createTypeFromTypeBinding(binding);
+		if (binding.getPHPElement() != null) {
+			// For classes that are in a namespace the name returned by the binding also includes the namespace.
+			famixType.setName(binding.getPHPElement().getElementName());
+		} else {
+			famixType.setName(binding.getName());
+		}
+		
+		types.add(qualifiedName, famixType);
+		famixType.setIsStub(true);
 		if (binding.isAmbiguous()) {
 			System.out.println();
 		}
@@ -190,13 +202,13 @@ public class Importer {
 		
 		
 		//extractBasicModifiersFromBinding(binding.getModifiers(), type);
-		type.setContainer(ensureContainerEntityForTypeBinding(binding));
-//		if (binding.getSuperclass() != null) 
-//			createInheritanceFromSubtypeToSuperTypeBinding(type, binding.getSuperclass());
+		famixType.setContainer(ensureContainerEntityForTypeBinding(binding));
+		if (binding.getSuperclass() != null) 
+			createInheritanceFromSubtypeToSuperTypeBinding(famixType, binding.getSuperclass());
 //		for (ITypeBinding interfaceBinding : binding.getInterfaces()) {
 //			createInheritanceFromSubtypeToSuperTypeBinding(type, interfaceBinding);
 //		}
-		return type;
+		return famixType;
 	}
 	
 	private Type createTypeFromTypeBinding(ITypeBinding binding) {
@@ -217,6 +229,34 @@ public class Importer {
 		return clazz;
 	}
 	
+	// INHERITANCE
+	
+	/**
+	 * We use this one when we have the super type binding
+	 */
+	private Inheritance createInheritanceFromSubtypeToSuperTypeBinding(Type famixSubType, ITypeBinding superBinding) {
+		return createInheritanceFromSubtypeToSuperType(famixSubType, ensureTypeFromTypeBinding(superBinding));
+	}
+
+	/**
+	 * When we cannot resolve the binding of the superclass of a class declaration,
+	 * we still want to create a {@link Type} with the best available information
+	 * from {@link org.eclipse.jdt.core.dom.Type}
+	 */
+//	public Inheritance createInheritanceFromSubtypeToSuperDomType(Type famixSubType, org.eclipse.jdt.core.dom.Type type) {
+//		return createInheritanceFromSubtypeToSuperType(famixSubType, ensureTypeFromDomType(type));
+//	}
+
+	/**
+	 * We use this one when we have the super type
+	 */
+	private Inheritance createInheritanceFromSubtypeToSuperType(Type subType, Type superType) {
+		Inheritance inheritance = new Inheritance();
+		inheritance.setSuperclass(superType);
+		inheritance.setSubclass(subType);
+		repository.add(inheritance);
+		return inheritance;
+	}
 	
 	// METHOD
 	
@@ -257,7 +297,7 @@ public class Importer {
 	}
 	
 	public Method ensureBasicMethod(String methodName, Type parentType, Consumer<Method> ifAbsent) {
-		String qualifiedName = qualifiedFAMIXNameOf(parentType) + NAME_SEPARATOR + methodName;
+		String qualifiedName = makeQualifiedNameFrom(qualifiedFAMIXNameOf(parentType), methodName);
 		if(methods.has(qualifiedName))
 			return methods.named(qualifiedName);
 		Method method = new Method();
@@ -316,10 +356,24 @@ public class Importer {
 	}
 	
 	private ContainerEntity ensureContainerEntityForTypeBinding(ITypeBinding binding) {
-		if (this.containerStack.isEmpty()) {
+		IMember declaringType = ((IMember)binding.getPHPElement()).getDeclaringType();
+		
+		binding.getEvaluatedType().getTypeName();
+		binding.getPHPElement().getParent().getHandleIdentifier();
+		
+		if (declaringType == null) {
 			return ensureNamespaceNamed("");
 		} else {
-			return this.topOfContainerStack();
+			boolean isNamespace = false;
+			try {
+				isNamespace = PHPFlags.isNamespace(declaringType.getFlags());
+			} catch (ModelException e) {
+				e.printStackTrace();
+			}
+			if (isNamespace) {
+				return ensureNamespaceNamed(declaringType.getElementName());
+			}
+			throw new RuntimeException("Update the detection of the parent");
 		}
 	}
 	
@@ -329,7 +383,7 @@ public class Importer {
 		FileAnchor fileAnchor = new FileAnchor();
 //		fileAnchor.setStartLine(compilationUnit.getLineNumber(node.getStartPosition()));
 //		fileAnchor.setEndLine(compilationUnit.getLineNumber(node.getStartPosition() + node.getLength() - 1));
-		fileAnchor.setFileName(pathWithoutIgnoredRootPath(currentFilePath));
+		fileAnchor.setFileName(pathWithoutIgnoredRootPath(getCurrentFilePath()));
 		sourcedEntity.setSourceAnchor(fileAnchor);
 		repository.add(fileAnchor);
 	}
@@ -338,12 +392,14 @@ public class Importer {
 	 * I return the qualified name of an entity as computed by PDT.
 	 */
 	public String getQualifiedNameForBinding(ITypeBinding binding) {
-		IModelElement modelElement = binding.getPHPElement();
-		if (modelElement instanceof IType) {
-			return ((IType)modelElement).getFullyQualifiedName();
-		}
-		throw new RuntimeException("No qualified name can be computed");
-		//return qualifiedFAMIXNameOf(topOfContainerStackOrDefaultNamespace()) + NAME_SEPARATOR + binding.getName();
+		return binding.getKey();
+//		IModelElement modelElement = binding.getPHPElement();
+//		if (modelElement instanceof IType) {
+//			logger.trace(((IType) modelElement).getScriptFolder().getPath().toString());
+//			return ((IType)modelElement).getFullyQualifiedName();
+//		}
+//		throw new RuntimeException("No qualified name can be computed");
+//		//return qualifiedFAMIXNameOf(topOfContainerStackOrDefaultNamespace()) + NAME_SEPARATOR + binding.getName();
 	}
 	
 	/**
@@ -356,11 +412,11 @@ public class Importer {
 		return makeQualifiedNameFrom(qualifiedContainerName, binding.getName());
 	}
 	
-	public static String makeQualifiedNameFrom(String containerQualifiedName, String entityName) {
+	public String makeQualifiedNameFrom(String containerQualifiedName, String entityName) {
 		return containerQualifiedName.isEmpty() ? entityName : containerQualifiedName + NAME_SEPARATOR + entityName ;
 	}
 	
-	public static String qualifiedFAMIXNameOf(ContainerEntity containerEntity) {	
+	public String qualifiedFAMIXNameOf(ContainerEntity containerEntity) {	
 		if (containerEntity instanceof Type)
 			return qualifiedFAMIXNameOf((Type) containerEntity);
 		if (containerEntity instanceof ScopingEntity)
@@ -371,28 +427,28 @@ public class Importer {
 		throw new RuntimeException("TODO: "+containerEntity.getName());
 	}
 	
-	public static String qualifiedNameOf(Method method) {
+	public String qualifiedNameOf(Method method) {
 		return makeQualifiedNameFrom(qualifiedFAMIXNameOf(method.getParentType()), method.getName());
 	}
 	
-	public static String qualifiedFAMIXNameOf(Type type) {	
+	public String qualifiedFAMIXNameOf(Type type) {	
 		if (type.getContainer() instanceof Type)
 			return qualifiedFAMIXNameOf((Type) type.getContainer()) + NAME_SEPARATOR + type.getName();
 		return makeQualifiedNameFrom(qualifiedFAMIXNameOf((ScopingEntity) type.getContainer()), type.getName());
 	}
 	
-	public static String qualifiedFAMIXNameOf(ScopingEntity container) {
+	public String qualifiedFAMIXNameOf(ScopingEntity container) {
 		if (container.getParentScope() != null)
 			return qualifiedFAMIXNameOf(container.getParentScope()) + NAMESPACE_SEPARATOR + container.getName();
 		return container.getName();
 	}
 	
-	public String entityBasenameFrom(String qualifiedName) {
-		int lastIndexOfSeparator = qualifiedName.lastIndexOf(NAME_SEPARATOR);
+	public String entityBasenameFrom(String qualifiedEntityName) {
+		int lastIndexOfSeparator = qualifiedEntityName.lastIndexOf(NAME_SEPARATOR);
 		if (lastIndexOfSeparator < 0) {
-			return qualifiedName;
+			return qualifiedEntityName;
 		} else {
-			return qualifiedName.substring(lastIndexOfSeparator+1);
+			return qualifiedEntityName.substring(lastIndexOfSeparator+1);
 		}
 	}
 	
@@ -420,7 +476,7 @@ public class Importer {
 	public void logNullBinding(String string, Object extraData, int lineNumber) {
 		logger.error("unresolved " + string +
 				" - " + extraData +
-				" - " + currentFilePath +
+				" - " + getCurrentFilePath() +
 				" - line " + lineNumber);
 	}			
 		
@@ -447,7 +503,7 @@ public class Importer {
 				.isPresent();
 			if (allowedPaths.isEmpty() || isPresent) {
 				logger.trace("ISourceModule: "+modelElement.getElementName()+" "+modelElement.getPath());
-				setCurrentFilePath(modelElement.getPath().makeAbsolute().toString());
+				setCurrentSourceModel((ISourceModule)modelElement);
 				
 				ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1, ((ISourceModule)modelElement));
 				Program program = parser.createAST(null);

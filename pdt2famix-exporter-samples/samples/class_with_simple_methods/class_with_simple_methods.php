@@ -6,7 +6,7 @@ class ClassWithSimpleMethods {
         
     }
     
-    protected function method2($x) {
+    protected function method2($x = 1) {
         $x = 1;
     }
     
@@ -14,6 +14,6 @@ class ClassWithSimpleMethods {
     }
     
     function method4($x = 1) {
-        
+	
     }
 }

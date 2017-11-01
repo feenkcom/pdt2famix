@@ -29,13 +29,15 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.feenk.pdt2famix.Importer;
+import com.feenk.pdt2famix.model.famix.Attribute;
+import com.feenk.pdt2famix.model.famix.Inheritance;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Type;
 
 public abstract class InPhpTestCase {
-	private static final String PROJECT_NAME = "pdt2famix-exporter-samples";
-	private static final String SAMPLES_LOCATION = "/" + PROJECT_NAME + "/samples/";
+	public static final String PROJECT_NAME = "pdt2famix-exporter-samples";
+	public static final String SAMPLES_NAME = "samples";
 		
 	protected Importer importer;
 	
@@ -91,65 +93,123 @@ public abstract class InPhpTestCase {
 		
 	}
 	
-	protected void assertNamespaceTypes(String namespaceQualifiedName, String ...typesQualifiedNames) {
+	protected void assertNamespaceTypes(String namespaceQualifiedName, String ...typesIdentifiers) {
+		ArrayList<Type> expectedTypes = new ArrayList<>();
+		
+		Arrays.asList(typesIdentifiers).stream().forEach(
+			typeQualifiedName -> expectedTypes.add(importer.types().named(typeQualifiedName)));
+		assertNamespaceTypes(namespaceQualifiedName, expectedTypes.toArray(new Type[] {}));
+	}
+	
+	protected void assertNamespaceTypes(String namespaceQualifiedName, Type ...expectedTypes) {
 		Namespace namespace = importer.namespaces().named(namespaceQualifiedName);
 		Collection<Type> obtainedTypes = namespace.getTypes();
-		ArrayList<Type>  expectedTypes = new ArrayList<>();
 		
-		Arrays.asList(typesQualifiedNames).stream().forEach(
-			typeQualifiedName -> assertEquals(namespace, importer.types().named(typeQualifiedName).getContainer()));
-		
-		Arrays.asList(typesQualifiedNames).stream().forEach(
-			typeQualifiedName -> expectedTypes.add(importer.types().named(typeQualifiedName)));
-		assertEquals(new HashSet<Type>(expectedTypes), new HashSet<Type>(obtainedTypes));
-		//assertArrayEquals(expectedTypes.toArray(), obtainedTypes.toArray());
+		assertEquals(new HashSet<Type>(Arrays.asList(expectedTypes)), new HashSet<Type>(obtainedTypes));
+		obtainedTypes.stream().forEach(
+			aType -> assertEquals(namespace, aType.getContainer()));
 	}
 	
 	// ASSERTIONS CLASSES
 	
-	protected void assertClassPresent(String classQualifiedname) {
-		Type classType = importer.types().named(classQualifiedname);
+	protected void assertClassPresent(String classIdentifier) {
+		Type classType;
 		
-		assertEquals(importer.entityBasenameFrom(classQualifiedname), classType.getName());
+		assertTrue(importer.types().has(classIdentifier));
+		classType = importer.types().named(classIdentifier);
+		
 		assertEquals(false, classType.getIsStub());
 		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
 		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class)(classType)).getIsInterface());
 	}
 	
-	protected void assertClassMethods(String qualifiedClassName, String ...localMethodNames) {
-		Type famixClass = importer.types().named(qualifiedClassName);
+	protected void assertClassType(Type classType, String typeName) {
+		assertEquals(typeName, classType.getName());
+		assertEquals(false, classType.getIsStub());
+		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
+		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class)(classType)).getIsInterface());
+	}
+	
+	protected void assertClassMethods(Type famixClass, String ...expectedMethodNames) {
 		Collection<Method> obtainedMethods = famixClass.getMethods();
 		ArrayList<Method>  expectedMethods = new ArrayList<>();
 		
-		Arrays.asList(localMethodNames).stream().forEach(
-				localQualifiedName -> {
-					String methodQualifiedName = makeQualifiedNameFrom(qualifiedClassName, localQualifiedName);
-					assertEquals(
-						famixClass, 
-						importer.methods().named(methodQualifiedName).getParentType());
-					expectedMethods.add(importer.methods().named(methodQualifiedName)); 
-				});
+		assertEquals(obtainedMethods.size(), expectedMethodNames.length);
+		Arrays.asList(expectedMethodNames).stream().forEach(
+				localName -> expectedMethods.add(methodNamed(localName)));
 		
 		assertEquals(new HashSet<>(expectedMethods), new HashSet<>(obtainedMethods));
+		obtainedMethods.stream().forEach(
+				aType -> assertEquals(famixClass, aType.getParentType()));
+	}
+	
+	// ASSERTIONS INHERITANCE
+	
+	protected void assertSingleInheritance(Type superclass, Type subclass) {
+		Inheritance superclassSubclassInheritance = superclass.getSubInheritances().stream().findFirst().get();
+		assertEquals(superclass, superclassSubclassInheritance.getSuperclass());
+		assertEquals(subclass, superclassSubclassInheritance.getSubclass());
+		Inheritance subclassSuperclassInheritance = subclass.getSuperInheritances().stream().findFirst().get();
+		assertEquals(superclassSubclassInheritance, subclassSuperclassInheritance);
 	}
 	
 	// ASSERTIONS METHODS
 	
-	protected void assertMethod(String methodQualifiedName, String[] strings) {
-		Method method;
-		
-		assertTrue(importer.methods().has(methodQualifiedName));
-		method = importer.methods().named(methodQualifiedName);
-		
-		assertEquals(importer.entityBasenameFrom(methodQualifiedName), method.getName());
+	protected void assertMethod(Method method, String[] modifiers) {
 		assertEquals(false, method.getHasClassScope() == null ? false : method.getHasClassScope() );
 		assertEquals(null, method.getKind());
+		assertEquals(method.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
 	}
 
-	// UTILS
+	// UTILS MODEL ACCESSING
 	
-	protected String makeQualifiedNameFrom(String containerQualifiedName, String entityName) {
-		return Importer.makeQualifiedNameFrom(containerQualifiedName, entityName);
+	protected Method methodInType(Type type, String methodName) {
+		return type.getMethods()
+			.stream()
+	        .filter(m -> m.getName().equals(methodName))
+	        .findAny()
+	        .get();
+	}
+	
+	protected Method methodNamed(String name) {
+		return importer.methods()
+				.stream()
+	            .filter(m -> m.getName().equals(name))
+	            .findAny()
+	            .get();
+	}
+
+	protected Attribute attributeNamed(String name) {
+		return importer.attributes()
+				.stream()
+				.filter(a -> a.getName().equals(name))
+				.findAny()
+				.get();
+	}
+	
+	protected Type typeWithIndentifier(String typeIdentifier) {
+		return importer.types().named(typeIdentifier);
+	}
+	
+	// UTILS IDENTIFIERS
+	
+	protected String identifierFor(String folderName, String fileName, String typeQualifiedName) {
+		//"=pdt2famix-exporter-samples/<samples\\/class_with_simple_methods{class_with_simple_methods.php[ClassWithSimpleMethods";
+		return 
+			"="  + PROJECT_NAME +
+			"/<" + SAMPLES_NAME +
+			"\\/"+ folderName +
+			"{"  + fileName+ ".php" +
+			"[" + typeQualifiedName.replace('$', '[').replace("\\", "\\\\");
+	}
+	
+	protected String typeIdentifier(String typeQualifiedName) {
+		return typeIdentifier(Importer.DEFAULT_NAMESPACE_NAME, typeQualifiedName);
+	}
+	
+	protected String typeIdentifier(String namespaceName, String typeName) {
+		String sampleDirectoryName = sampleDirectory();
+		return identifierFor(sampleDirectoryName, sampleDirectoryName, importer.makeQualifiedNameFrom(namespaceName, typeName));
 	}
 	
 	/**
@@ -224,7 +284,6 @@ public abstract class InPhpTestCase {
 	
 	protected abstract String sampleDirectory();
 	
-	
 //	private IProject project;
 //	private IScriptProject projectPHP;
 	
@@ -236,8 +295,9 @@ public abstract class InPhpTestCase {
 //		projectPHP = DLTKCore.create(project);
 		
 		IScriptProject projectPHP = ProjectHolder.getProject(PROJECT_NAME);
+		
 		importer = new Importer(projectPHP);
-		importer.run(projectPHP, Arrays.asList(new String[] { SAMPLES_LOCATION + 	sampleDirectory() }));
+		importer.run(projectPHP, Arrays.asList(new String[] {"/" + PROJECT_NAME + "/"+ SAMPLES_NAME +"/" + sampleDirectory()}) );
 	}
 	
 //	@After

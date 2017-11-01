@@ -14,13 +14,13 @@ public class NamespaceDefaultThreeClasses  extends InPhpTestCase {
 	@Test
 	public void testNamespaceStructure() {	
 		assertNamespacesPresent(new String[] {Importer.DEFAULT_NAMESPACE_NAME});
-		assertClassPresent("TestClassOneAB");
-		assertClassPresent("TestClassTwoAB");
-		assertClassPresent("TestClassThreeAB");
+		assertClassPresent(typeIdentifier("TestClassOneAB"));
+		assertClassPresent(typeIdentifier("TestClassTwoAB"));
+		assertClassPresent(typeIdentifier("TestClassThreeAB"));
 		
 		assertNamespaceTypes(Importer.DEFAULT_NAMESPACE_NAME, new String[] {
-				"TestClassOneAB",
-				"TestClassTwoAB",
-				"TestClassThreeAB"});
+				typeIdentifier("TestClassOneAB"),
+				typeIdentifier("TestClassTwoAB"),
+				typeIdentifier("TestClassThreeAB")});
 	}
 }
