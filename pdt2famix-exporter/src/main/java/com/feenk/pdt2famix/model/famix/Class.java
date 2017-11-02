@@ -6,8 +6,6 @@ import ch.akuhn.fame.internal.MultivalueSet;
 
 import java.util.Collection;
 
-import com.feenk.pdt2famix.model.php.Trait;
-
 import ch.akuhn.fame.FameDescription;
 import ch.akuhn.fame.FamePackage;
 

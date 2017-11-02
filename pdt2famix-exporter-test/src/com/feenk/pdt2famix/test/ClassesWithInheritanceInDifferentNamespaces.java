@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.model.famix.Inheritance;
 import com.feenk.pdt2famix.model.famix.Type;
 import com.feenk.pdt2famix.test.support.InPhpTestCase;
 

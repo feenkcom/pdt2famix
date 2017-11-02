@@ -1,21 +1,27 @@
 package com.feenk.pdt2famix.inphp;
 
+import java.util.Arrays;
+
 import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
-import org.eclipse.dltk.core.IType;
-import org.eclipse.dltk.core.search.IDLTKSearchScope;
-import org.eclipse.dltk.core.search.SearchEngine;
+import org.eclipse.php.core.PHPToolkitUtil;
+import org.eclipse.php.core.ast.nodes.ASTError;
+import org.eclipse.php.core.ast.nodes.Assignment;
+import org.eclipse.php.core.ast.nodes.Bindings;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
-import org.eclipse.php.core.ast.nodes.FormalParameter;
+import org.eclipse.php.core.ast.nodes.FieldAccess;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
+import org.eclipse.php.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.core.ast.nodes.MethodDeclaration;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
+import org.eclipse.php.core.ast.nodes.TraitDeclaration;
 import org.eclipse.php.core.ast.visitor.AbstractVisitor;
 import org.eclipse.php.core.compiler.PHPFlags;
 
 import com.feenk.pdt2famix.Importer;
+import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Type;
@@ -34,29 +40,20 @@ public class AstVisitor extends AbstractVisitor {
 	public void logNullBinding(String string, Object extraData, int lineNumber) {
 		importer.logNullBinding(string, extraData, lineNumber);
 	}
-
-	private void logBinding(ITypeBinding binding) {
-		logger.trace(
-			"binding: "+ binding.getClass().getName()+"; " + 
-			"kind: " + binding.getKind() + "; "+
-			"name: " + binding.getName() + "; "+
-			"evaluatedType: " + binding.getEvaluatedType());
-	}
-	
-	private String getModifierDescription(int modifiers) {
-		String description = "";
-		if (PHPFlags.isPublic(modifiers))
-			description += "public ";
-		if (PHPFlags.isProtected(modifiers))
-			description += "protected ";
-		if (PHPFlags.isPrivate(modifiers))
-			description += "private";
-		if (description.isEmpty()) {
-			description += "other";
-		}
-		return description;
-	}
-	
+		
+//	@Override
+//	public boolean visit(Assignment assignment) {
+//		((FieldAccess)assignment.getLeftHandSide()).resolveFieldBinding().getDeclaringClass().getKey();
+//		// TODO Auto-generated method stub
+//		return super.visit(assignment);
+//	}
+//	
+//	
+//	@Override
+//	public boolean visit(FieldAccess fieldAccess) {
+//		// TODO Auto-generated method stub
+//		return super.visit(fieldAccess);
+//	}
 	
 	// NAMESPACES 
 	
@@ -73,7 +70,7 @@ public class AstVisitor extends AbstractVisitor {
 		importer.popFromContainerStack();
 	}
 	
-	// TYPES
+	// TYPES - CLASS
 	
 	@Override
 	public boolean visit(ClassDeclaration classDeclaration) {
@@ -81,18 +78,19 @@ public class AstVisitor extends AbstractVisitor {
 		
 		ITypeBinding binding = classDeclaration.resolveTypeBinding();
 		if (binding == null) {
-			logNullBinding("type declaration", classDeclaration.getName(), classDeclaration.getStart());
+			logNullBinding("class declaration", classDeclaration.getName(), classDeclaration.getStart());
 			return false;
 		}
 		
-		Type type = importer.ensureTypeFromTypeBinding(binding);
+		Type famixType = importer.ensureTypeFromTypeBinding(binding);
 
-		//TODO: add superclass details;
+		//TODO: add superclass details in case there is no binding to the superclass;
 		
-		type.setIsStub(false);
-		importer.createSourceAnchor(type, classDeclaration);
+		famixType.setIsStub(false);
+		importer.createSourceAnchor(famixType, classDeclaration);
 //		importer.ensureCommentFromBodyDeclaration(type, node);
-		importer.pushOnContainerStack(type);
+		importer.pushOnContainerStack(famixType);
+				
 		return true;
 	}
 	
@@ -100,6 +98,34 @@ public class AstVisitor extends AbstractVisitor {
 	public void endVisit(ClassDeclaration classDeclaration) {
 		importer.popFromContainerStack();
 	}
+	
+	// TYPES - TRAIT
+	
+	@Override
+	public boolean visit(TraitDeclaration traitDeclaration) {
+		logger.trace("visiting trait declaration - " + traitDeclaration.getName());
+		
+		ITypeBinding binding = traitDeclaration.resolveTypeBinding();
+		if (binding == null) {
+			logNullBinding("trait declaration", traitDeclaration.getName(), traitDeclaration.getStart());
+			return false;
+		}
+		
+		Type famixType = importer.ensureTypeFromTypeBinding(binding);
+		famixType.setIsStub(false);
+		importer.createSourceAnchor(famixType, traitDeclaration);
+//		importer.ensureCommentFromBodyDeclaration(type, node);
+		importer.pushOnContainerStack(famixType);
+		
+		return true;
+	}
+
+	@Override
+	public void endVisit(TraitDeclaration node) {
+		importer.popFromContainerStack();
+	}
+	
+	// TYPES - METHODS
 	
 	@Override
 	public boolean visit(MethodDeclaration methodDeclarationNode) {
@@ -141,11 +167,37 @@ public class AstVisitor extends AbstractVisitor {
 		importer.popFromContainerStack();
 	}
 	
-	@Override
-	public boolean visit(SingleFieldDeclaration singleFieldDeclaration) {
-		//logger.trace("visiting single field declaration - " + singleFieldDeclaration.getName());
-		//logBinding(singleFieldDeclaration.getValue().resolveTypeBinding());
+	
+	/**
+	 * Skip the visitor here for the moment. It seems that the binding resolver does not return a variable binding for the parameters.
+	 * @param variableBinding
+	 */
+	@Override 
+	public boolean visit(SingleFieldDeclaration fieldDeclaration) {
+		logger.trace("visiting single field declaration - " + fieldDeclaration.getName());
+			
+		IVariableBinding variableBinding = fieldDeclaration.getName().resolveVariableBinding();
+		Attribute attribute;
+		
+		if (variableBinding == null) {
+			attribute = importer.ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration);
+			// Bindings.findFieldInType(null, fieldDeclaration.getName().toString());
+		}
+		else {
+			throw new RuntimeException("Would ne nice to see this error.");
+			//attribute = importer.ensureAttributeForVariableBinding(variableBinding);
+		}
+		
+		importer.createSourceAnchor(attribute, fieldDeclaration);
+		//importer.ensureCommentFromBodyDeclaration(attribute, field);
+		attribute.setIsStub(false);
+		
 		return true;
+	}
+	
+	private void visit(IVariableBinding variableBinding) {
+//		Attribute attribute = importer.ensureAttributeForVariableBinding(variableBinding);	
+//		attribute.setIsStub(false);
 	}
 
 }

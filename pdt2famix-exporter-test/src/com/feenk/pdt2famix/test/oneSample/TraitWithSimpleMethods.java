@@ -4,14 +4,12 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
-public class ClassWithSimpleMethods extends OneSampleTestCase {
-
-	@Override
+public class TraitWithSimpleMethods extends OneSampleTestCase {
+	
 	protected String sample() {
-		return removeTestSuffix(ClassWithSimpleMethods.class.getSimpleName());
+		return removeTestSuffix(TraitWithSimpleMethods.class.getSimpleName());
 	}
 	
 	@Test
@@ -22,13 +20,7 @@ public class ClassWithSimpleMethods extends OneSampleTestCase {
 	}
 	
 	@Test
-	public void testNamespace() {	
-		assertNamespacesPresent(Importer.DEFAULT_NAMESPACE_NAME);
-		assertNamespaceTypes(Importer.DEFAULT_NAMESPACE_NAME, type);
-	}
-	
-	@Test
-	public void testClassMethod() {	
+	public void testTraitMethod() {	
 		assertClassMethods(type, "method1", "method2", "method3", "method4");
 		assertMethod(methodInType(type, "method1"), new String[] {"public"});
 		assertMethod(methodInType(type, "method2"), new String[] {"protected"});
@@ -37,3 +29,4 @@ public class ClassWithSimpleMethods extends OneSampleTestCase {
 	}
 
 }
+

@@ -1,9 +1,6 @@
-package com.feenk.pdt2famix.model.php;
+package com.feenk.pdt2famix.model.famix;
 
 import java.util.Collection;
-
-import com.feenk.pdt2famix.model.famix.Class;
-import com.feenk.pdt2famix.model.famix.Type;
 
 import ch.akuhn.fame.FameDescription;
 import ch.akuhn.fame.FamePackage;

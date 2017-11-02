@@ -33,6 +33,7 @@ import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.Inheritance;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.Namespace;
+import com.feenk.pdt2famix.model.famix.Trait;
 import com.feenk.pdt2famix.model.famix.Type;
 
 public abstract class InPhpTestCase {
@@ -110,7 +111,7 @@ public abstract class InPhpTestCase {
 			aType -> assertEquals(namespace, aType.getContainer()));
 	}
 	
-	// ASSERTIONS CLASSES
+	// ASSERTIONS CLASSES & TRAITS
 	
 	protected void assertClassPresent(String classIdentifier) {
 		Type classType;
@@ -118,13 +119,6 @@ public abstract class InPhpTestCase {
 		assertTrue(importer.types().has(classIdentifier));
 		classType = importer.types().named(classIdentifier);
 		
-		assertEquals(false, classType.getIsStub());
-		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
-		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class)(classType)).getIsInterface());
-	}
-	
-	protected void assertClassType(Type classType, String typeName) {
-		assertEquals(typeName, classType.getName());
 		assertEquals(false, classType.getIsStub());
 		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
 		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class)(classType)).getIsInterface());
@@ -141,6 +135,19 @@ public abstract class InPhpTestCase {
 		assertEquals(new HashSet<>(expectedMethods), new HashSet<>(obtainedMethods));
 		obtainedMethods.stream().forEach(
 				aType -> assertEquals(famixClass, aType.getParentType()));
+	}
+	
+	protected void assertClassType(Type classType, String typeName) {
+		assertEquals(typeName, classType.getName());
+		assertEquals(false, classType.getIsStub());
+		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
+		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class)(classType)).getIsInterface());
+	}
+	
+	protected void assertTraitType(Type traitType, String typeName) {
+		assertEquals(typeName, traitType.getName());
+		assertEquals(false, traitType.getIsStub());
+		assertTrue(traitType instanceof Trait);
 	}
 	
 	// ASSERTIONS INHERITANCE
@@ -160,6 +167,17 @@ public abstract class InPhpTestCase {
 		assertEquals(null, method.getKind());
 		assertEquals(method.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
 	}
+	
+	// ASSERTIONS ATTRIBUTES
+	
+	protected void assertAttribute(String attributeName, Type parentType, Type declaredType) {
+		Attribute attribute = attributeInType(parentType, attributeName);
+		
+		assertEquals(false, attribute.getHasClassScope() == null ? false : attribute.getHasClassScope() );
+		assertEquals(parentType, attribute.getParentType());
+		assertEquals(declaredType, attribute.getDeclaredType());
+		//assertEquals(attribute.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
+	}
 
 	// UTILS MODEL ACCESSING
 	
@@ -169,6 +187,23 @@ public abstract class InPhpTestCase {
 	        .filter(m -> m.getName().equals(methodName))
 	        .findAny()
 	        .get();
+	}
+	
+	protected Attribute attributeInType(Type type, String attributeName) {
+		return type.getAttributes()
+			.stream()
+	        .filter(attribute -> attribute.getName().equals(attributeName))
+	        .findAny()
+	        .get();
+	}
+	
+	
+	protected Type typeNamed(String typeName) {
+		return importer.types()
+				.stream()
+	            .filter(type -> type.getName().equals(typeName))
+	            .findAny()
+	            .get();
 	}
 	
 	protected Method methodNamed(String name) {
@@ -190,6 +225,28 @@ public abstract class InPhpTestCase {
 	protected Type typeWithIndentifier(String typeIdentifier) {
 		return importer.types().named(typeIdentifier);
 	}
+	
+	protected Type numberType() {
+		return typeWithIndentifier("number");
+	}
+	
+	protected Type booleanType() {
+		return typeWithIndentifier("boolean");
+	}
+	
+	protected Type nullType() {
+		return typeWithIndentifier("NULL");
+	}
+	
+	protected Type stringType() {
+		return typeWithIndentifier("string");
+	}
+	
+	protected Type arrayType() {
+		return typeWithIndentifier("array");
+	}
+	
+	
 	
 	// UTILS IDENTIFIERS
 	

@@ -1,7 +1,10 @@
 package com.feenk.pdt2famix.test.support;
 
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Before;
 
+import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.Type;
 
 public abstract class OneSampleTestCase extends InPhpTestCase {
@@ -26,5 +29,21 @@ public abstract class OneSampleTestCase extends InPhpTestCase {
 	
 	private String sampleIdentifier() {
 		return typeIdentifier(sample());
+	}
+	
+	public static String removeTestSuffix(String target) {
+		String suffix = "Test";
+	    if (!target.endsWith(suffix)) {
+	        return target;
+	    }
+
+	    String prefix = target.substring(0, target.length() - suffix.length());
+	    return prefix;
+	}
+	
+	// ASSERTIONS ATTRIBUTES
+
+	protected void assertAttribute(String attributeName, Type declaredType) {
+		super.assertAttribute(attributeName, type, declaredType);
 	}
 }
