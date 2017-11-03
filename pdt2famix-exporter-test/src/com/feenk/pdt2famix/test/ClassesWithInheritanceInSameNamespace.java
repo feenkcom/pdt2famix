@@ -5,7 +5,6 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.feenk.pdt2famix.Importer;
-import com.feenk.pdt2famix.model.famix.Inheritance;
 import com.feenk.pdt2famix.model.famix.Type;
 import com.feenk.pdt2famix.test.support.InPhpTestCase;
 
@@ -43,8 +42,8 @@ public class ClassesWithInheritanceInSameNamespace extends InPhpTestCase {
 		assertEquals(1, subSubClass.getSuperInheritances().size());
 		assertEquals(0, subSubClass.getSubInheritances().size());
 		
-		assertSingleInheritance(rootSuperclass, subClass);
-		assertSingleInheritance(subClass, subSubClass);
+		assertSingleInheritance(subClass, rootSuperclass);
+		assertSingleInheritance(subSubClass, subClass);
 	}
 	
 }

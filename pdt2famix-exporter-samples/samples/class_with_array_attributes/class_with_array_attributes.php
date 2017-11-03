@@ -7,4 +7,7 @@ class ClassWithArrayAttributes
 	public $booleanArray = array(true, false);
 	public $nullArray = array(NULL, NULL);
 	public $mixedArray = array("a", 1, true, NULL);
+	
+	public $emptyArray = [];
+	public $numberSyntaxShortArray = [1,2,3];
 }

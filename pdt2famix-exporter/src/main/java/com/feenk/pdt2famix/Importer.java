@@ -8,12 +8,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.eclipse.dltk.core.IMember;
 import org.eclipse.dltk.core.IModelElement;
@@ -26,6 +28,8 @@ import org.eclipse.php.core.PHPToolkitUtil;
 import org.eclipse.php.core.PHPVersion;
 import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.ASTParser;
+import org.eclipse.php.core.ast.nodes.ArrayCreation;
+import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
@@ -33,6 +37,7 @@ import org.eclipse.php.core.ast.nodes.Identifier;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.Program;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
+import org.eclipse.php.core.ast.nodes.Variable;
 import org.eclipse.php.core.ast.visitor.Visitor;
 import org.eclipse.php.core.compiler.PHPFlags;
 import org.eclipse.php.core.compiler.ast.nodes.NamespaceReference;
@@ -43,7 +48,9 @@ import com.feenk.pdt2famix.model.famix.ContainerEntity;
 import com.feenk.pdt2famix.model.famix.Entity;
 import com.feenk.pdt2famix.model.famix.FAMIXModel;
 import com.feenk.pdt2famix.model.famix.FileAnchor;
+import com.feenk.pdt2famix.model.famix.IndexedFileAnchor;
 import com.feenk.pdt2famix.model.famix.Inheritance;
+import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.JavaSourceLanguage;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.NamedEntity;
@@ -51,6 +58,7 @@ import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.PrimitiveType;
 import com.feenk.pdt2famix.model.famix.ScopingEntity;
 import com.feenk.pdt2famix.model.famix.SourcedEntity;
+import com.feenk.pdt2famix.model.famix.StructuralEntity;
 import com.feenk.pdt2famix.model.famix.Trait;
 import com.feenk.pdt2famix.model.famix.Type;
 import com.feenk.pdt2famix.model.java.JavaModel;
@@ -64,7 +72,7 @@ public class Importer {
 	 
 	private static final char NAME_SEPARATOR = '$';
 	private static final char NAMESPACE_SEPARATOR = NamespaceReference.NAMESPACE_SEPARATOR;
-	private static final String CONSTRUCTOR_KIND = "constructor";
+	public static final String CONSTRUCTOR_KIND = "constructor";
 	public static final String DEFAULT_NAMESPACE_NAME = "";
 	public static final String SYSTEM_NAMESPACE_NAME = "__SYSTEM__";
 	public static final String UNKNOWN_NAME = "__UNKNOWN__";
@@ -95,6 +103,12 @@ public class Importer {
 	public void setCurrentSourceModel(ISourceModule currentSourceModel) {this.currentSourceModel = currentSourceModel;}
 	
 	public String getCurrentFilePath() {return getCurrentSourceModel().getPath().makeAbsolute().toString(); }
+	
+	public Collection currentInvocations() {
+		return (Collection) repository().getElements().stream()
+			.filter(entity -> entity instanceof Invocation)
+			.collect(Collectors.toList());
+	}
 		
 	/**
 	 * This is a structure that keeps track of the current stack of containers
@@ -178,11 +192,13 @@ public class Importer {
 	// TYPE
 	
 	public Type ensureTypeFromTypeBinding(ITypeBinding binding) {
-		String qualifiedName = getQualifiedNameForBinding(binding);
-		binding.getName();
+		String qualifiedName = getQualifiedNameForBinding(binding); 
+		binding.getKey();
+		binding.getPHPElement();
 		if (qualifiedName == null) {
-			throw new RuntimeException("Handle the case of unknown types");
-		}
+			return unknownType();
+			//throw new RuntimeException("Handle the case of unknown types");
+		} 
 		if (types.has(qualifiedName)) { 
 			return types.named(qualifiedName); };
 			
@@ -197,28 +213,27 @@ public class Importer {
 		types.add(qualifiedName, famixType);
 		entitiesToKeys.put(famixType, qualifiedName);
 		famixType.setIsStub(true);		
-		
+		binding.getInterfaces();
 		//extractBasicModifiersFromBinding(binding.getModifiers(), type);
 		famixType.setContainer(ensureContainerEntityForTypeBinding(binding));
 		if (binding.getSuperclass() != null) 
 			createInheritanceFromSubtypeToSuperTypeBinding(famixType, binding.getSuperclass());
-//		for (ITypeBinding interfaceBinding : binding.getInterfaces()) {
-//			createInheritanceFromSubtypeToSuperTypeBinding(type, interfaceBinding);
-//		}
+		for (ITypeBinding interfaceBinding : binding.getInterfaces()) {
+			createInheritanceFromSubtypeToSuperTypeBinding(famixType, interfaceBinding);
+		}
 		return famixType;
 	}
 	
 	private Type createTypeFromTypeBinding(ITypeBinding binding) {
 		//TODO: binding.isAmbiguous()
-		//TODO: binding.isTrait()
-		//TODO: binding.isClass()
 		//TODO: binding.isNullType()
 		
-		if (binding.isPrimitive())
+		if (binding.isPrimitive() || binding.isNullType())
 			return new PrimitiveType();
 		
 		if (binding.isArray())
 			// For now arrays are just primitive types
+			// Ideally we should the the binding return by #getElementType();
 			return new PrimitiveType();
 			//return createTypeFromTypeBinding(binding.getElementType());
 		
@@ -264,6 +279,13 @@ public class Importer {
 	
 	public Method ensureMethodFromMethodBindingToCurrentContainer(IMethodBinding methodBinding) {
 		return ensureMethodFromMethodBinding(methodBinding, (Type) topOfContainerStack());
+	}
+	
+	public Method ensureMethodFromMethodBinding(IMethodBinding binding) {
+		/*	JDT2FAMIX: binding.getDeclaringClass() might be null when you invoke a method from a class that is not in the path
+			It looks like calling getMethodDeclaration is more robust. */
+		/* In PDT  getMethodDeclaration() does not exist in the method binding /*/
+		return ensureMethodFromMethodBinding(binding, ensureTypeFromTypeBinding(binding.getDeclaringClass()));
 	}
 	
 	public Method ensureMethodFromMethodBinding(IMethodBinding methodBinding, Type parentType) {
@@ -353,10 +375,10 @@ public class Importer {
 		}
 		Attribute attribute = ensureBasicAttribute(parentType, name, qualifiedName, attributeType);
 		
-		// Andrei: I moved this here from the visitor method.
-		extractBasicModifiersFromBinding(variableBinding.getModifiers(), attribute);
-		if (PHPFlags.isStatic(variableBinding.getModifiers()))
-			attribute.setHasClassScope(true);
+//		Andrei: I moved this here from the visitor method.
+//		extractBasicModifiersFromBinding(variableBinding.getModifiers(), attribute);
+//		if (PHPFlags.isStatic(variableBinding.getModifiers()))
+//			attribute.setHasClassScope(true);
 		
 		//createAnnotationInstancesToEntityFromAnnotationBinding(attribute, variableBinding.getAnnotations());
 		return attribute;
@@ -364,8 +386,9 @@ public class Importer {
 	
 	public Attribute ensureAttributeFromFieldDeclarationIntoParentType(SingleFieldDeclaration fieldDeclaration) {
 		Type parentType = this.topFromContainerStack(Type.class);
-		String name;
+		String name ;
 		
+		// This will be problematic. Right now we just hardcode the format of a variable name.
 		if (fieldDeclaration.getName().getName() instanceof Identifier) {
 			name = ((Identifier)fieldDeclaration.getName().getName()).getName();
 			if (fieldDeclaration.getName().isDollared()) {
@@ -380,7 +403,17 @@ public class Importer {
 			return attributes.named(qualifiedName);
 		Type declaredType = null;
 		if (fieldDeclaration.getValue() != null) {
-			declaredType = ensureTypeFromTypeBinding(fieldDeclaration.getValue().resolveTypeBinding());
+			Expression value = fieldDeclaration.getValue();
+			ITypeBinding resolvedTypeBinding = value.resolveTypeBinding();
+			if (resolvedTypeBinding == null || (resolvedTypeBinding.getPHPElement() != null && resolvedTypeBinding.getPHPElement() == this.currentSourceModel)) {
+				// Sometimes in the parser the code "public $list = [];" or "private $languageCode = 'EN';" 
+				// does not resolve correcly the type of the value. If we resolve the binding of the type we 
+				// get the current source module.
+				// If we encounter that then we just use the unknown type.
+				declaredType = unknownType();
+			} else {
+				declaredType = ensureTypeFromTypeBinding(fieldDeclaration.getValue().resolveTypeBinding());
+			}
 		}
 		Attribute attribute = ensureBasicAttribute(parentType, name, qualifiedName, declaredType);
 		return attribute;
@@ -394,6 +427,46 @@ public class Importer {
 		attribute.setDeclaredType(declaredType);
 		attributes.add(qualifiedName, attribute);
 		return attribute;
+	}
+	
+	// INVOCATIONS
+	
+	public Invocation createInvocationFromMethodBinding(IMethodBinding binding) {		
+		Invocation invocation = new Invocation();
+		invocation.setSender((Method) topOfContainerStack()); 
+		if (binding != null)
+			//TODO: If the binding is null we can still get the name if the method
+			invocation.addCandidates(ensureMethodFromMethodBinding(binding));  
+		//invocation.setSignature(signature);
+		repository.add(invocation);
+		return invocation;
+	}
+	
+	public StructuralEntity ensureStructuralEntityFromExpression(Expression expression) {
+		if (expression instanceof Variable) {
+			IVariableBinding simpleNameBinding = ((Variable) expression).resolveVariableBinding();
+			if (simpleNameBinding != null) {
+				if (simpleNameBinding.isField())
+					return ensureAttributeForVariableBinding(simpleNameBinding);
+//				if (binding.isParameter())
+//					return ensureParameterWithinCurrentMethodFromVariableBinding(binding);
+//				if (binding.isEnumConstant())
+//					return ensureEnumValueFromVariableBinding(binding);
+			}
+		}
+//		if (expression instanceof Variable) {
+//			ITypeBinding simpleNameBinding = ((Variable) expression).resolveVariableBinding();
+//			if (simpleNameBinding instanceof IVariableBinding) {
+//				IVariableBinding binding = ((IVariableBinding) simpleNameBinding).getVariableDeclaration();
+//				if (binding.isField())
+//					return ensureAttributeForVariableBinding(binding);
+//				if (binding.isParameter())
+//					return ensureParameterWithinCurrentMethodFromVariableBinding(binding);
+//				if (binding.isEnumConstant())
+//					return ensureEnumValueFromVariableBinding(binding);
+//			}
+//		}
+		return null;
 	}
 	
 	/**
@@ -513,6 +586,7 @@ public class Importer {
 		IMember declaringType;
 		
 		if (binding.getPHPElement() == null) {
+			// If the PHP element is nill but we have a primitive type we use the system namespace as the container.
 			if (binding.isPrimitive() || binding.isNullType() || binding.isArray()) {
 				return systemNamespace();
 			}
@@ -544,9 +618,9 @@ public class Importer {
 	//SOURCE ANCHOR
 	
 	public void createSourceAnchor(SourcedEntity sourcedEntity, ASTNode node) {
-		FileAnchor fileAnchor = new FileAnchor();
-//		fileAnchor.setStartLine(compilationUnit.getLineNumber(node.getStartPosition()));
-//		fileAnchor.setEndLine(compilationUnit.getLineNumber(node.getStartPosition() + node.getLength() - 1));
+		IndexedFileAnchor fileAnchor = new IndexedFileAnchor();
+		fileAnchor.setStartPos(node.getStart());
+		fileAnchor.setEndPos(node.getEnd());
 		fileAnchor.setFileName(pathWithoutIgnoredRootPath(getCurrentFilePath()));
 		sourcedEntity.setSourceAnchor(fileAnchor);
 		repository.add(fileAnchor);
@@ -557,27 +631,24 @@ public class Importer {
 	 */
 	public String getQualifiedNameForBinding(ITypeBinding binding) {
 		String qualifiedName = binding.getKey();
-		
+		binding.isAmbiguous();
 		if (qualifiedName == null) {
+			// We handle the cases when PDT does not generate a key differenty.
+			// For primitive types we just use the name of the type.
 			if (binding.isPrimitive() || binding.isNullType()) {
-			// The key for a primitive
 				qualifiedName = binding.getName(); 
 			} else if (binding.isArray()) {
+				// This is a temporary solutions for arrays;
+				// Normally we should use also the name of the type to
+				// distinguish between different types of arrays.
 				qualifiedName = "array";
 			}
 			if (qualifiedName == null) {
-				throw new RuntimeException("Unable to compute qualified name");
+				return null;
+				//throw new RuntimeException("Unable to compute qualified name");
 			}
 		} 
 		return qualifiedName;
-				
-//		IModelElement modelElement = binding.getPHPElement();
-//		if (modelElement instanceof IType) {
-//			logger.trace(((IType) modelElement).getScriptFolder().getPath().toString());
-//			return ((IType)modelElement).getFullyQualifiedName();
-//		}
-//		throw new RuntimeException("No qualified name can be computed");
-//		//return qualifiedFAMIXNameOf(topOfContainerStackOrDefaultNamespace()) + NAME_SEPARATOR + binding.getName();
 	}
 	
 	/**
@@ -704,5 +775,6 @@ public class Importer {
 	public String pathWithoutIgnoredRootPath(String originalPath) { 
 		return originalPath.replaceAll("\\\\", "/").replaceFirst("^"+ignoredRootPath+"/", "");
 	}
+	
 
 }

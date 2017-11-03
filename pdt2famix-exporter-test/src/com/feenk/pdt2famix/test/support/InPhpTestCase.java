@@ -124,13 +124,24 @@ public abstract class InPhpTestCase {
 		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class)(classType)).getIsInterface());
 	}
 	
+	protected void assertInterfacePresent(String interfaceIdentifier) {
+		Type interfaceType;
+		
+		assertTrue(importer.types().has(interfaceIdentifier));
+		interfaceType = importer.types().named(interfaceIdentifier);
+		
+		assertEquals(false, interfaceType.getIsStub());
+		assertTrue(interfaceType instanceof com.feenk.pdt2famix.model.famix.Class);
+		assertEquals(true, ((com.feenk.pdt2famix.model.famix.Class)(interfaceType)).getIsInterface());
+	}
+	
 	protected void assertClassMethods(Type famixClass, String ...expectedMethodNames) {
 		Collection<Method> obtainedMethods = famixClass.getMethods();
 		ArrayList<Method>  expectedMethods = new ArrayList<>();
 		
 		assertEquals(obtainedMethods.size(), expectedMethodNames.length);
 		Arrays.asList(expectedMethodNames).stream().forEach(
-				localName -> expectedMethods.add(methodNamed(localName)));
+				localName -> expectedMethods.add(methodInType(famixClass, localName)));
 		
 		assertEquals(new HashSet<>(expectedMethods), new HashSet<>(obtainedMethods));
 		obtainedMethods.stream().forEach(
@@ -150,9 +161,17 @@ public abstract class InPhpTestCase {
 		assertTrue(traitType instanceof Trait);
 	}
 	
+	protected void assertInterfaceType(Type interfaceType, String typeName) {
+		assertEquals(typeName, interfaceType.getName());
+		assertEquals(false, interfaceType.getIsStub());
+		assertTrue(interfaceType instanceof com.feenk.pdt2famix.model.famix.Class);
+		assertEquals(true, ((com.feenk.pdt2famix.model.famix.Class)(interfaceType)).getIsInterface());
+	}
+	
 	// ASSERTIONS INHERITANCE
 	
-	protected void assertSingleInheritance(Type superclass, Type subclass) {
+	
+	protected void assertSingleInheritance(Type subclass, Type superclass) {
 		Inheritance superclassSubclassInheritance = superclass.getSubInheritances().stream().findFirst().get();
 		assertEquals(superclass, superclassSubclassInheritance.getSuperclass());
 		assertEquals(subclass, superclassSubclassInheritance.getSubclass());
@@ -160,11 +179,30 @@ public abstract class InPhpTestCase {
 		assertEquals(superclassSubclassInheritance, subclassSuperclassInheritance);
 	}
 	
+	protected void assertInheritance(Type subclass, Type superclass) {
+		Inheritance superclassSubclassInheritance = superclass.getSubInheritances().stream()
+				.filter( inheritance -> inheritance.getSubclass().equals(subclass) )
+				.findAny()
+				.get();
+		assertEquals(superclass, superclassSubclassInheritance.getSuperclass());
+		assertEquals(subclass, superclassSubclassInheritance.getSubclass());
+		
+		Inheritance subclassSuperclassInheritance = subclass.getSuperInheritances().stream()
+				.filter( inheritance -> inheritance.getSuperclass().equals(superclass) )
+				.findAny()
+				.get();
+		assertEquals(superclassSubclassInheritance, subclassSuperclassInheritance);
+	}
+	
 	// ASSERTIONS METHODS
 	
 	protected void assertMethod(Method method, String[] modifiers) {
+		assertMethod(method, modifiers, null);
+	}
+	
+	protected void assertMethod(Method method, String[] modifiers, String kind) {
 		assertEquals(false, method.getHasClassScope() == null ? false : method.getHasClassScope() );
-		assertEquals(null, method.getKind());
+		assertEquals(kind, method.getKind());
 		assertEquals(method.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
 	}
 	

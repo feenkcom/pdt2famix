@@ -16,7 +16,7 @@ public class ClassWithArrayAttributesTest extends OneSampleTestCase {
 	public void testModelSize() {
 		assertEquals(2, importer.namespaces().size());
 		assertEquals(2, importer.types().size());
-		assertEquals(5, importer.attributes().size());
+		assertEquals(7, importer.attributes().size());
 	}
 	
 	@Test
@@ -26,6 +26,9 @@ public class ClassWithArrayAttributesTest extends OneSampleTestCase {
 		assertAttribute("$booleanArray", arrayType());
 		assertAttribute("$nullArray", arrayType());
 		assertAttribute("$mixedArray", arrayType());
+		
+		assertAttribute("$emptyArray", arrayType());
+		assertAttribute("$numberSyntaxShortArray", arrayType());
 	}
 	
 }

@@ -1,27 +1,31 @@
 package com.feenk.pdt2famix.inphp;
 
-import java.util.Arrays;
+import java.util.List;
 
 import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
-import org.eclipse.php.core.PHPToolkitUtil;
-import org.eclipse.php.core.ast.nodes.ASTError;
-import org.eclipse.php.core.ast.nodes.Assignment;
-import org.eclipse.php.core.ast.nodes.Bindings;
+import org.eclipse.php.core.ast.nodes.AnonymousClassDeclaration;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
-import org.eclipse.php.core.ast.nodes.FieldAccess;
+import org.eclipse.php.core.ast.nodes.ConstantDeclaration;
+import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
+import org.eclipse.php.core.ast.nodes.Identifier;
+import org.eclipse.php.core.ast.nodes.InterfaceDeclaration;
+import org.eclipse.php.core.ast.nodes.LambdaFunctionDeclaration;
 import org.eclipse.php.core.ast.nodes.MethodDeclaration;
+import org.eclipse.php.core.ast.nodes.MethodInvocation;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
 import org.eclipse.php.core.ast.nodes.TraitDeclaration;
+import org.eclipse.php.core.ast.nodes.TypeDeclaration;
+import org.eclipse.php.core.ast.nodes.Variable;
 import org.eclipse.php.core.ast.visitor.AbstractVisitor;
-import org.eclipse.php.core.compiler.PHPFlags;
 
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Attribute;
+import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Type;
@@ -55,6 +59,16 @@ public class AstVisitor extends AbstractVisitor {
 //		return super.visit(fieldAccess);
 //	}
 	
+	@Override
+	public boolean visit(LambdaFunctionDeclaration lambdaFunctionDeclaration) {
+		return true;
+	}
+
+	@Override
+	public boolean visit(AnonymousClassDeclaration anonymousClassDeclaration) {
+		return true;
+	}
+	
 	// NAMESPACES 
 	
 	@Override
@@ -75,22 +89,7 @@ public class AstVisitor extends AbstractVisitor {
 	@Override
 	public boolean visit(ClassDeclaration classDeclaration) {
 		logger.trace("visiting class declaration - " + classDeclaration.getName());
-		
-		ITypeBinding binding = classDeclaration.resolveTypeBinding();
-		if (binding == null) {
-			logNullBinding("class declaration", classDeclaration.getName(), classDeclaration.getStart());
-			return false;
-		}
-		
-		Type famixType = importer.ensureTypeFromTypeBinding(binding);
-
-		//TODO: add superclass details in case there is no binding to the superclass;
-		
-		famixType.setIsStub(false);
-		importer.createSourceAnchor(famixType, classDeclaration);
-//		importer.ensureCommentFromBodyDeclaration(type, node);
-		importer.pushOnContainerStack(famixType);
-				
+		visitTypeDeclaration(classDeclaration);
 		return true;
 	}
 	
@@ -104,19 +103,7 @@ public class AstVisitor extends AbstractVisitor {
 	@Override
 	public boolean visit(TraitDeclaration traitDeclaration) {
 		logger.trace("visiting trait declaration - " + traitDeclaration.getName());
-		
-		ITypeBinding binding = traitDeclaration.resolveTypeBinding();
-		if (binding == null) {
-			logNullBinding("trait declaration", traitDeclaration.getName(), traitDeclaration.getStart());
-			return false;
-		}
-		
-		Type famixType = importer.ensureTypeFromTypeBinding(binding);
-		famixType.setIsStub(false);
-		importer.createSourceAnchor(famixType, traitDeclaration);
-//		importer.ensureCommentFromBodyDeclaration(type, node);
-		importer.pushOnContainerStack(famixType);
-		
+		visitTypeDeclaration(traitDeclaration);
 		return true;
 	}
 
@@ -125,16 +112,45 @@ public class AstVisitor extends AbstractVisitor {
 		importer.popFromContainerStack();
 	}
 	
-	// TYPES - METHODS
+	// TYPES - INTERFACES
+	
+	@Override
+	public boolean visit(InterfaceDeclaration interfaceDeclaration) {
+		logger.trace("visiting trait declaration - " + interfaceDeclaration.getName());
+		visitTypeDeclaration(interfaceDeclaration);
+		return true;
+	}
+
+	@Override
+	public void endVisit(InterfaceDeclaration interfaceDeclaration) {
+		importer.popFromContainerStack();
+	}
+	
+	
+	// TYPES - HELPER METHOD
+	
+	private void visitTypeDeclaration(TypeDeclaration typeDeclaration) {
+		ITypeBinding binding = typeDeclaration.resolveTypeBinding();
+		if (binding == null) {
+			logNullBinding("type declaration", typeDeclaration.getName(), typeDeclaration.getStart());
+			return ;
+		}
+		
+		Type famixType = importer.ensureTypeFromTypeBinding(binding);
+		famixType.setIsStub(false);
+		importer.createSourceAnchor(famixType, typeDeclaration);
+//		importer.ensureCommentFromBodyDeclaration(type, node);
+		importer.pushOnContainerStack(famixType);
+	}
+	
+	//  METHODS
 	
 	@Override
 	public boolean visit(MethodDeclaration methodDeclarationNode) {
 		IMethodBinding methodBinding = methodDeclarationNode.resolveMethodBinding();
 		ITypeBinding declatingClass  = methodBinding.getDeclaringClass();
 		ITypeBinding[] returnType    = methodBinding.getReturnType();
-		
-		//returnType[0].isPrimitive();
-		
+				
 		IModelElement modelElement = methodBinding.getPHPElement();
 		logger.trace(((IMethod)modelElement).getFullyQualifiedName());
 		logger.trace(methodBinding.getKey()); 
@@ -168,10 +184,8 @@ public class AstVisitor extends AbstractVisitor {
 	}
 	
 	
-	/**
-	 * Skip the visitor here for the moment. It seems that the binding resolver does not return a variable binding for the parameters.
-	 * @param variableBinding
-	 */
+	// ATTRIBUTES
+	
 	@Override 
 	public boolean visit(SingleFieldDeclaration fieldDeclaration) {
 		logger.trace("visiting single field declaration - " + fieldDeclaration.getName());
@@ -195,9 +209,42 @@ public class AstVisitor extends AbstractVisitor {
 		return true;
 	}
 	
-	private void visit(IVariableBinding variableBinding) {
-//		Attribute attribute = importer.ensureAttributeForVariableBinding(variableBinding);	
-//		attribute.setIsStub(false);
+//	// CONSTANTS
+//
+//	@Override
+//	public boolean visit(ConstantDeclaration constantDeclaration) {
+//		logger.trace("visiting constant declaration - " + constantDeclaration.names());
+//		
+//		List<Identifier> names = constantDeclaration.names();
+//		List<Expression> initializers = constantDeclaration.initializers();
+//		for (int index = 0; index < names.size(); index++ ) {
+//			Attribute attribute = importer.ensureConstant(names.get(index), initializers.get(index));
+//			//importer.createSourceAnchor(attribute, fieldDeclaration);
+//			//importer.ensureCommentFromBodyDeclaration(attribute, field);
+//			attribute.setIsStub(false);
+//		}
+//		
+//		return true;
+//	}
+	
+	// METHOD INVOCATION
+	
+	@Override
+	public boolean visit(MethodInvocation methodInvocation) {
+		methodInvocation.getMethod().getFunctionName().getName().toString();
+		methodInvocation.getDispatcher().resolveTypeBinding();
+		((Variable)methodInvocation.getDispatcher()).resolveVariableBinding();
+		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
+		Expression dispatcherExpression = methodInvocation.getDispatcher();
+		Invocation invocation = importer.createInvocationFromMethodBinding(methodInvocation.resolveMethodBinding());
+		if (dispatcherExpression != null) {
+			invocation.setReceiver(importer.ensureStructuralEntityFromExpression(dispatcherExpression));
+		}
+		//importer.createAccessFromExpression(methodInvocation.getMethod().);
+		//invocation.setReceiver(importer.ensureStructuralEntityFromExpression(methodInvocation.getExpression()));
+//		node.arguments().stream().forEach(arg -> importer.createAccessFromExpression((Expression) arg));
+		return true;
+
 	}
 
 }
