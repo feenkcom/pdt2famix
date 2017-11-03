@@ -16,7 +16,7 @@ public class AnnotationType extends Type {
 
     private ContainerEntity container;
     
-    @FameProperty(name = "container", opposite = "definedAnnotationTypes")
+    @FameProperty(name = "container", opposite = "definedAnnotationTypes", container = true)
     public ContainerEntity getContainer() {
         return container;
     }

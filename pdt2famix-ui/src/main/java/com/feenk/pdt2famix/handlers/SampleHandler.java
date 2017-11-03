@@ -31,11 +31,13 @@ public class SampleHandler extends AbstractHandler {
 		
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
 		IProject project = root.getProject("pdt2famix-exporter-samples");
-		Importer importer = new Importer();
+		Importer importer;
 		
 		try {
 			project.open(null /* IProgressMonitor */);
 			IScriptProject projectPHP = DLTKCore.create(project);
+			importer = new Importer(projectPHP);
+			
 			logger.trace("run");
 			importer.run(projectPHP, new ArrayList<>());
 			logger.trace("done running");

@@ -25,7 +25,7 @@ public class Attribute extends StructuralEntity {
     
     private Type parentType;
     
-    @FameProperty(name = "parentType", opposite = "attributes")
+    @FameProperty(name = "parentType", opposite = "attributes", container = true)
     public Type getParentType() {
         return parentType;
     }

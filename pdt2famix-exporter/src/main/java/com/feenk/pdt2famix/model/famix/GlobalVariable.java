@@ -14,7 +14,7 @@ public class GlobalVariable extends StructuralEntity {
 
     private ScopingEntity parentScope;
     
-    @FameProperty(name = "parentScope", opposite = "globalVariables")
+    @FameProperty(name = "parentScope", opposite = "globalVariables", container = true)
     public ScopingEntity getParentScope() {
         return parentScope;
     }

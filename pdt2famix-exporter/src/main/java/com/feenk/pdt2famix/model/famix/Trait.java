@@ -1,66 +1,74 @@
+// Automagically generated code, please do not change
 package com.feenk.pdt2famix.model.famix;
 
-import java.util.Collection;
-
-import ch.akuhn.fame.FameDescription;
-import ch.akuhn.fame.FamePackage;
-import ch.akuhn.fame.FameProperty;
 import ch.akuhn.fame.internal.MultivalueSet;
+import ch.akuhn.fame.FameProperty;
+import ch.akuhn.fame.FameDescription;
+import java.util.*;
+import ch.akuhn.fame.FamePackage;
+
 
 @FamePackage("FAMIX")
 @FameDescription("Trait")
 public class Trait extends Type {
 
-	private Collection<Class> classes; 
 
-    @FameProperty(name = "classes", opposite = "traits")
-    public Collection<Class> getClasses() {
-        if (classes == null) {
-        	classes = new MultivalueSet<Class>() {
+
+    private Collection<TraitUsage> incomingTraitUsages; 
+
+    @FameProperty(name = "incomingTraitUsages", opposite = "trait", derived = true)
+    public Collection<TraitUsage> getIncomingTraitUsages() {
+        if (incomingTraitUsages == null) {
+            incomingTraitUsages = new MultivalueSet<TraitUsage>() {
                 @Override
-                protected void clearOpposite(Class e) {
-                    e.getTraits().remove(Trait.this);
+                protected void clearOpposite(TraitUsage e) {
+                    e.setTrait(null);
                 }
                 @Override
-                protected void setOpposite(Class e) {
-                    e.getTraits().add(Trait.this);
+                protected void setOpposite(TraitUsage e) {
+                    e.setTrait(Trait.this);
                 }
             };
         }
-        return classes;
+        return incomingTraitUsages;
     }
     
-    public void setClasses(Collection<? extends Class> arguments) {
-        this.getClasses().clear();
-        this.getClasses().addAll(arguments);
-    }
+    public void setIncomingTraitUsages(Collection<? extends TraitUsage> incomingTraitUsages) {
+        this.getIncomingTraitUsages().clear();
+        this.getIncomingTraitUsages().addAll(incomingTraitUsages);
+    }                    
     
-    public void addClasses(Class one) {
-        this.getClasses().add(one);
+        
+    public void addIncomingTraitUsages(TraitUsage one) {
+        this.getIncomingTraitUsages().add(one);
     }   
     
-    public void addClasses(Class one, Class... many) {
-        this.getClasses().add(one);
-        for (Class each : many)
-            this.getClasses().add(each);
+    public void addIncomingTraitUsages(TraitUsage one, TraitUsage... many) {
+        this.getIncomingTraitUsages().add(one);
+        for (TraitUsage each : many)
+            this.getIncomingTraitUsages().add(each);
     }   
     
-    public void addClasses(Iterable<? extends Class> many) {
-        for (Class each : many)
-            this.getClasses().add(each);
+    public void addIncomingTraitUsages(Iterable<? extends TraitUsage> many) {
+        for (TraitUsage each : many)
+            this.getIncomingTraitUsages().add(each);
     }   
                 
-    public void addClasses(Class[] many) {
-        for (Class each : many)
-            this.getClasses().add(each);
+    public void addIncomingTraitUsages(TraitUsage[] many) {
+        for (TraitUsage each : many)
+            this.getIncomingTraitUsages().add(each);
     }
     
-    public int numberOfClasses() {
-        return getClasses().size();
+    public int numberOfIncomingTraitUsages() {
+        return getIncomingTraitUsages().size();
     }
 
-    public boolean hasClasses() {
-        return !getClasses().isEmpty();
+    public boolean hasIncomingTraitUsages() {
+        return !getIncomingTraitUsages().isEmpty();
     }
-	
+    
+                
+
+
 }
+

@@ -14,7 +14,7 @@ public class EnumValue extends StructuralEntity {
 
     private Enum parentEnum;
     
-    @FameProperty(name = "parentEnum", opposite = "values")
+    @FameProperty(name = "parentEnum", opposite = "values", container = true)
     public Enum getParentEnum() {
         return parentEnum;
     }

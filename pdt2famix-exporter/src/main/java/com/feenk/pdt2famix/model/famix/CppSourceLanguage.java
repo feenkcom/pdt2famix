@@ -6,8 +6,8 @@ import ch.akuhn.fame.FamePackage;
 
 
 @FamePackage("FAMIX")
-@FameDescription("Namespace")
-public class Namespace extends ScopingEntity {
+@FameDescription("CppSourceLanguage")
+public class CppSourceLanguage extends CSourceLanguage {
 
 
 

@@ -70,7 +70,7 @@ public class ScopingEntity extends ContainerEntity {
                 
     private ScopingEntity parentScope;
     
-    @FameProperty(name = "parentScope", opposite = "childScopes")
+    @FameProperty(name = "parentScope", opposite = "childScopes", container = true)
     public ScopingEntity getParentScope() {
         return parentScope;
     }

@@ -14,7 +14,7 @@ public class Function extends BehaviouralEntity {
 
     private ContainerEntity container;
     
-    @FameProperty(name = "container", opposite = "functions")
+    @FameProperty(name = "container", opposite = "functions", container = true)
     public ContainerEntity getContainer() {
         return container;
     }

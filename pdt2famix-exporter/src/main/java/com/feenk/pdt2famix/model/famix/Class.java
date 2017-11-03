@@ -1,12 +1,10 @@
 // Automagically generated code, please do not change
 package com.feenk.pdt2famix.model.famix;
 
-import ch.akuhn.fame.FameProperty;
 import ch.akuhn.fame.internal.MultivalueSet;
-
-import java.util.Collection;
-
+import ch.akuhn.fame.FameProperty;
 import ch.akuhn.fame.FameDescription;
+import java.util.*;
 import ch.akuhn.fame.FamePackage;
 
 
@@ -27,59 +25,60 @@ public class Class extends Type {
         this.isInterface = isInterface;
     }
     
-    
-    
-    private Collection<Trait> traits; 
+    private Collection<Exception> exceptions; 
 
-    @FameProperty(name = "traits", opposite = "classes", derived = true)
-    public Collection<Trait> getTraits() {
-        if (traits == null) {
-        	traits = new MultivalueSet<Trait>() {
+    @FameProperty(name = "exceptions", opposite = "exceptionClass", derived = true)
+    public Collection<Exception> getExceptions() {
+        if (exceptions == null) {
+            exceptions = new MultivalueSet<Exception>() {
                 @Override
-                protected void clearOpposite(Trait e) {
-                    e.getClasses().remove(Class.this);
+                protected void clearOpposite(Exception e) {
+                    e.setExceptionClass(null);
                 }
                 @Override
-                protected void setOpposite(Trait e) {
-                    e.getClasses().add(Class.this);
+                protected void setOpposite(Exception e) {
+                    e.setExceptionClass(Class.this);
                 }
             };
         }
-        return traits;
+        return exceptions;
     }
     
-    public void setTraits(Collection<? extends Trait> traits) {
-        this.getTraits().clear();
-        this.getTraits().addAll(traits);
-    }
+    public void setExceptions(Collection<? extends Exception> exceptions) {
+        this.getExceptions().clear();
+        this.getExceptions().addAll(exceptions);
+    }                    
     
-    public void addTraits(Trait one) {
-        this.getTraits().add(one);
+        
+    public void addExceptions(Exception one) {
+        this.getExceptions().add(one);
     }   
     
-    public void addTraits(Trait one, Trait... many) {
-        this.getTraits().add(one);
-        for (Trait each : many)
-            this.getTraits().add(each);
+    public void addExceptions(Exception one, Exception... many) {
+        this.getExceptions().add(one);
+        for (Exception each : many)
+            this.getExceptions().add(each);
     }   
     
-    public void addTraits(Iterable<? extends Trait> many) {
-        for (Trait each : many)
-            this.getTraits().add(each);
+    public void addExceptions(Iterable<? extends Exception> many) {
+        for (Exception each : many)
+            this.getExceptions().add(each);
     }   
                 
-    public void addTraits(Trait[] many) {
-        for (Trait each : many)
-            this.getTraits().add(each);
+    public void addExceptions(Exception[] many) {
+        for (Exception each : many)
+            this.getExceptions().add(each);
     }
     
-    public int numberOfTraits() {
-        return getTraits().size();
+    public int numberOfExceptions() {
+        return getExceptions().size();
     }
 
-    public boolean hasTraits() {
-        return !getTraits().isEmpty();
+    public boolean hasExceptions() {
+        return !getExceptions().isEmpty();
     }
+    
+                
 
 
 }

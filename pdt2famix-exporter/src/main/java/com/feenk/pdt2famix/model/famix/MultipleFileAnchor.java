@@ -13,36 +13,36 @@ public class MultipleFileAnchor extends SourceAnchor {
 
 
 
-    private Collection<FileAnchor> allFiles; 
+    private Collection<AbstractFileAnchor> allFiles; 
 
     @FameProperty(name = "allFiles")
-    public Collection<FileAnchor> getAllFiles() {
-        if (allFiles == null) allFiles = new HashSet<FileAnchor>();
+    public Collection<AbstractFileAnchor> getAllFiles() {
+        if (allFiles == null) allFiles = new HashSet<AbstractFileAnchor>();
         return allFiles;
     }
     
-    public void setAllFiles(Collection<? extends FileAnchor> allFiles) {
+    public void setAllFiles(Collection<? extends AbstractFileAnchor> allFiles) {
         this.getAllFiles().clear();
         this.getAllFiles().addAll(allFiles);
     }                    
 
-    public void addAllFiles(FileAnchor one) {
+    public void addAllFiles(AbstractFileAnchor one) {
         this.getAllFiles().add(one);
     }   
     
-    public void addAllFiles(FileAnchor one, FileAnchor... many) {
+    public void addAllFiles(AbstractFileAnchor one, AbstractFileAnchor... many) {
         this.getAllFiles().add(one);
-        for (FileAnchor each : many)
+        for (AbstractFileAnchor each : many)
             this.getAllFiles().add(each);
     }   
     
-    public void addAllFiles(Iterable<? extends FileAnchor> many) {
-        for (FileAnchor each : many)
+    public void addAllFiles(Iterable<? extends AbstractFileAnchor> many) {
+        for (AbstractFileAnchor each : many)
             this.getAllFiles().add(each);
     }   
                 
-    public void addAllFiles(FileAnchor[] many) {
-        for (FileAnchor each : many)
+    public void addAllFiles(AbstractFileAnchor[] many) {
+        for (AbstractFileAnchor each : many)
             this.getAllFiles().add(each);
     }
     

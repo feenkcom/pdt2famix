@@ -1,8 +1,10 @@
 // Automagically generated code, please do not change
 package com.feenk.pdt2famix.model.file;
 
+import ch.akuhn.fame.internal.MultivalueSet;
 import ch.akuhn.fame.FameProperty;
 import ch.akuhn.fame.FameDescription;
+import java.util.*;
 import ch.akuhn.fame.FamePackage;
 
 
@@ -12,61 +14,60 @@ public class Folder extends AbstractFile {
 
 
 
-    private Number numberOfFiles;
+    private Collection<AbstractFile> childrenFileSystemEntities; 
+
+    @FameProperty(name = "childrenFileSystemEntities", opposite = "parentFolder", derived = true)
+    public Collection<AbstractFile> getChildrenFileSystemEntities() {
+        if (childrenFileSystemEntities == null) {
+            childrenFileSystemEntities = new MultivalueSet<AbstractFile>() {
+                @Override
+                protected void clearOpposite(AbstractFile e) {
+                    e.setParentFolder(null);
+                }
+                @Override
+                protected void setOpposite(AbstractFile e) {
+                    e.setParentFolder(Folder.this);
+                }
+            };
+        }
+        return childrenFileSystemEntities;
+    }
     
-    @FameProperty(name = "numberOfFiles")
-    public Number getNumberOfFiles() {
-        return numberOfFiles;
+    public void setChildrenFileSystemEntities(Collection<? extends AbstractFile> childrenFileSystemEntities) {
+        this.getChildrenFileSystemEntities().clear();
+        this.getChildrenFileSystemEntities().addAll(childrenFileSystemEntities);
+    }                    
+    
+        
+    public void addChildrenFileSystemEntities(AbstractFile one) {
+        this.getChildrenFileSystemEntities().add(one);
+    }   
+    
+    public void addChildrenFileSystemEntities(AbstractFile one, AbstractFile... many) {
+        this.getChildrenFileSystemEntities().add(one);
+        for (AbstractFile each : many)
+            this.getChildrenFileSystemEntities().add(each);
+    }   
+    
+    public void addChildrenFileSystemEntities(Iterable<? extends AbstractFile> many) {
+        for (AbstractFile each : many)
+            this.getChildrenFileSystemEntities().add(each);
+    }   
+                
+    public void addChildrenFileSystemEntities(AbstractFile[] many) {
+        for (AbstractFile each : many)
+            this.getChildrenFileSystemEntities().add(each);
+    }
+    
+    public int numberOfChildrenFileSystemEntities() {
+        return getChildrenFileSystemEntities().size();
     }
 
-    public void setNumberOfFiles(Number numberOfFiles) {
-        this.numberOfFiles = numberOfFiles;
+    public boolean hasChildrenFileSystemEntities() {
+        return !getChildrenFileSystemEntities().isEmpty();
     }
     
-    private Number numberOfFolders;
-    
-    @FameProperty(name = "numberOfFolders")
-    public Number getNumberOfFolders() {
-        return numberOfFolders;
-    }
-
-    public void setNumberOfFolders(Number numberOfFolders) {
-        this.numberOfFolders = numberOfFolders;
-    }
-    
-    private Number totalNumberOfLinesOfText;
-    
-    @FameProperty(name = "totalNumberOfLinesOfText")
-    public Number getTotalNumberOfLinesOfText() {
-        return totalNumberOfLinesOfText;
-    }
-
-    public void setTotalNumberOfLinesOfText(Number totalNumberOfLinesOfText) {
-        this.totalNumberOfLinesOfText = totalNumberOfLinesOfText;
-    }
-    
-    private Number numberOfLinesOfText;
-    
-    @FameProperty(name = "numberOfLinesOfText")
-    public Number getNumberOfLinesOfText() {
-        return numberOfLinesOfText;
-    }
-
-    public void setNumberOfLinesOfText(Number numberOfLinesOfText) {
-        this.numberOfLinesOfText = numberOfLinesOfText;
-    }
-    
-    private Number numberOfEmptyLinesOfText;
-    
-    @FameProperty(name = "numberOfEmptyLinesOfText")
-    public Number getNumberOfEmptyLinesOfText() {
-        return numberOfEmptyLinesOfText;
-    }
-
-    public void setNumberOfEmptyLinesOfText(Number numberOfEmptyLinesOfText) {
-        this.numberOfEmptyLinesOfText = numberOfEmptyLinesOfText;
-    }
-    
+                
 
 
 }

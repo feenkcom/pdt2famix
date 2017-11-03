@@ -19,7 +19,7 @@ import ch.akuhn.fame.parser.InputSource;
  */
 public class FamixGenerator {
 	public static void main(String... args) {
-		File mseFile = new File("src/main/java/com/feenk/jdt2famix/modelgenerator/famix30.fm3.mse");
+		File mseFile = new File("src/main/java/com/feenk/pdt2famix/modelgenerator/famix30.fm3.mse");
 	    InputStream in;
 		try {
 			in = new FileInputStream(mseFile);
@@ -28,7 +28,7 @@ public class FamixGenerator {
 			Importer builder = new Importer(fm3);
 			builder.readFrom(input);
 			Repository famix = builder.getResult();
-			CodeGeneration gen = new CodeGeneration("com.feenk.jdt2famix.model", "gen", "");
+			CodeGeneration gen = new CodeGeneration("com.feenk.pdt2famix.model", "gen", "");
 			gen.accept(famix);
 			puts("done");
 		} catch (FileNotFoundException e) {

@@ -31,7 +31,7 @@ public class AnnotationInstanceAttribute extends SourcedEntity {
     
     private AnnotationInstance parentAnnotationInstance;
     
-    @FameProperty(name = "parentAnnotationInstance", opposite = "attributes")
+    @FameProperty(name = "parentAnnotationInstance", opposite = "attributes", container = true)
     public AnnotationInstance getParentAnnotationInstance() {
         return parentAnnotationInstance;
     }

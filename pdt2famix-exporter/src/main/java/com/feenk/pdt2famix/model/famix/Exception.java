@@ -14,13 +14,19 @@ public class Exception extends Entity {
 
     private Class exceptionClass;
     
-    @FameProperty(name = "exceptionClass")
+    @FameProperty(name = "exceptionClass", opposite = "exceptions")
     public Class getExceptionClass() {
         return exceptionClass;
     }
 
     public void setExceptionClass(Class exceptionClass) {
+        if (this.exceptionClass != null) {
+            if (this.exceptionClass.equals(exceptionClass)) return;
+            this.exceptionClass.getExceptions().remove(this);
+        }
         this.exceptionClass = exceptionClass;
+        if (exceptionClass == null) return;
+        exceptionClass.getExceptions().add(this);
     }
     
 

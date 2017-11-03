@@ -14,7 +14,7 @@ public class ImplicitVariable extends StructuralEntity {
 
     private BehaviouralEntity parentBehaviouralEntity;
     
-    @FameProperty(name = "parentBehaviouralEntity", opposite = "implicitVariables")
+    @FameProperty(name = "parentBehaviouralEntity", opposite = "implicitVariables", container = true)
     public BehaviouralEntity getParentBehaviouralEntity() {
         return parentBehaviouralEntity;
     }

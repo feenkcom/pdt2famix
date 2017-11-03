@@ -14,7 +14,7 @@ public class LocalVariable extends StructuralEntity {
 
     private BehaviouralEntity parentBehaviouralEntity;
     
-    @FameProperty(name = "parentBehaviouralEntity", opposite = "localVariables")
+    @FameProperty(name = "parentBehaviouralEntity", opposite = "localVariables", container = true)
     public BehaviouralEntity getParentBehaviouralEntity() {
         return parentBehaviouralEntity;
     }

@@ -14,7 +14,7 @@ public class SourceAnchor extends Entity {
 
     private SourcedEntity element;
     
-    @FameProperty(name = "element", opposite = "sourceAnchor")
+    @FameProperty(name = "element", opposite = "sourceAnchor", container = true)
     public SourcedEntity getElement() {
         return element;
     }

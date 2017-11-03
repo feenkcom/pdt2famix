@@ -10,13 +10,13 @@ import ch.akuhn.fame.FamePackage;
 
 @FamePackage("FAMIX")
 @FameDescription("AnnotationInstance")
-public class AnnotationInstance extends BehaviouralEntity {
+public class AnnotationInstance extends SourcedEntity {
 
 
 
     private NamedEntity annotatedEntity;
     
-    @FameProperty(name = "annotatedEntity", opposite = "annotationInstances")
+    @FameProperty(name = "annotatedEntity", opposite = "annotationInstances", container = true)
     public NamedEntity getAnnotatedEntity() {
         return annotatedEntity;
     }
@@ -33,7 +33,7 @@ public class AnnotationInstance extends BehaviouralEntity {
     
     private AnnotationType annotationType;
     
-    @FameProperty(name = "annotationType", opposite = "instances")
+    @FameProperty(name = "annotationType", opposite = "instances", container = true)
     public AnnotationType getAnnotationType() {
         return annotationType;
     }

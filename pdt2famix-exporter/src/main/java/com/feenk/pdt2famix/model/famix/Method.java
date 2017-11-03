@@ -14,17 +14,6 @@ public class Method extends BehaviouralEntity {
 
 
 
-    private String kind;
-    
-    @FameProperty(name = "kind")
-    public String getKind() {
-        return kind;
-    }
-
-    public void setKind(String kind) {
-        this.kind = kind;
-    }
-    
     private Collection<ThrownException> thrownExceptions; 
 
     @FameProperty(name = "thrownExceptions", opposite = "definingMethod", derived = true)
@@ -133,45 +122,6 @@ public class Method extends BehaviouralEntity {
     }
     
                 
-    private Boolean hasClassScope;
-    
-    @FameProperty(name = "hasClassScope")
-    public Boolean getHasClassScope() {
-        return hasClassScope;
-    }
-
-    public void setHasClassScope(Boolean hasClassScope) {
-        this.hasClassScope = hasClassScope;
-    }
-    
-    private Type parentType;
-    
-    @FameProperty(name = "parentType", opposite = "methods")
-    public Type getParentType() {
-        return parentType;
-    }
-
-    public void setParentType(Type parentType) {
-        if (this.parentType != null) {
-            if (this.parentType.equals(parentType)) return;
-            this.parentType.getMethods().remove(this);
-        }
-        this.parentType = parentType;
-        if (parentType == null) return;
-        parentType.getMethods().add(this);
-    }
-    
-    private String timeStamp;
-    
-    @FameProperty(name = "timeStamp")
-    public String getTimeStamp() {
-        return timeStamp;
-    }
-
-    public void setTimeStamp(String timeStamp) {
-        this.timeStamp = timeStamp;
-    }
-    
     private Collection<DeclaredException> declaredExceptions; 
 
     @FameProperty(name = "declaredExceptions", opposite = "definingMethod", derived = true)
@@ -226,6 +176,56 @@ public class Method extends BehaviouralEntity {
     }
     
                 
+    private String kind;
+    
+    @FameProperty(name = "kind")
+    public String getKind() {
+        return kind;
+    }
+
+    public void setKind(String kind) {
+        this.kind = kind;
+    }
+    
+    private Boolean hasClassScope;
+    
+    @FameProperty(name = "hasClassScope")
+    public Boolean getHasClassScope() {
+        return hasClassScope;
+    }
+
+    public void setHasClassScope(Boolean hasClassScope) {
+        this.hasClassScope = hasClassScope;
+    }
+    
+    private Type parentType;
+    
+    @FameProperty(name = "parentType", opposite = "methods", container = true)
+    public Type getParentType() {
+        return parentType;
+    }
+
+    public void setParentType(Type parentType) {
+        if (this.parentType != null) {
+            if (this.parentType.equals(parentType)) return;
+            this.parentType.getMethods().remove(this);
+        }
+        this.parentType = parentType;
+        if (parentType == null) return;
+        parentType.getMethods().add(this);
+    }
+    
+    private String timeStamp;
+    
+    @FameProperty(name = "timeStamp")
+    public String getTimeStamp() {
+        return timeStamp;
+    }
+
+    public void setTimeStamp(String timeStamp) {
+        this.timeStamp = timeStamp;
+    }
+    
     private String category;
     
     @FameProperty(name = "category")

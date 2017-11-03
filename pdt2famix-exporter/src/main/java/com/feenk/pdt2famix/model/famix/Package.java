@@ -14,17 +14,6 @@ public class Package extends ScopingEntity {
 
 
 
-    private Number numberOfClientPackages;
-    
-    @FameProperty(name = "numberOfClientPackages")
-    public Number getNumberOfClientPackages() {
-        return numberOfClientPackages;
-    }
-
-    public void setNumberOfClientPackages(Number numberOfClientPackages) {
-        this.numberOfClientPackages = numberOfClientPackages;
-    }
-    
     private Collection<NamedEntity> childNamedEntities; 
 
     @FameProperty(name = "childNamedEntities", opposite = "parentPackage", derived = true)
@@ -79,17 +68,6 @@ public class Package extends ScopingEntity {
     }
     
                 
-    private Number numberOfMethods;
-    
-    @FameProperty(name = "numberOfMethods")
-    public Number getNumberOfMethods() {
-        return numberOfMethods;
-    }
-
-    public void setNumberOfMethods(Number numberOfMethods) {
-        this.numberOfMethods = numberOfMethods;
-    }
-    
 
 
 }

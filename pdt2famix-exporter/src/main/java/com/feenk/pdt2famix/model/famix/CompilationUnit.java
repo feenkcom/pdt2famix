@@ -2,16 +2,13 @@
 package com.feenk.pdt2famix.model.famix;
 
 import ch.akuhn.fame.FameProperty;
-
-import com.feenk.pdt2famix.model.file.File;
-
 import ch.akuhn.fame.FameDescription;
 import ch.akuhn.fame.FamePackage;
 
 
 @FamePackage("FAMIX")
 @FameDescription("CompilationUnit")
-public class CompilationUnit extends File {
+public class CompilationUnit extends CFile {
 
 
 

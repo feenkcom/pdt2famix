@@ -112,17 +112,6 @@ public class Invocation extends Association {
         sender.getOutgoingInvocations().add(this);
     }
     
-    private String receiverSourceCode;
-    
-    @FameProperty(name = "receiverSourceCode")
-    public String getReceiverSourceCode() {
-        return receiverSourceCode;
-    }
-
-    public void setReceiverSourceCode(String receiverSourceCode) {
-        this.receiverSourceCode = receiverSourceCode;
-    }
-    
 
 
 }

@@ -1,6 +1,7 @@
 // Automagically generated code, please do not change
 package com.feenk.pdt2famix.model.famix;
 
+//import com.feenk.pdt2famix.model.dynamix.Activation;
 import ch.akuhn.fame.internal.MultivalueSet;
 import ch.akuhn.fame.FameProperty;
 import ch.akuhn.fame.FameDescription;
@@ -23,17 +24,6 @@ public class BehaviouralEntity extends ContainerEntity {
 
     public void setSignature(String signature) {
         this.signature = signature;
-    }
-    
-    private Number numberOfParameters;
-    
-    @FameProperty(name = "numberOfParameters")
-    public Number getNumberOfParameters() {
-        return numberOfParameters;
-    }
-
-    public void setNumberOfParameters(Number numberOfParameters) {
-        this.numberOfParameters = numberOfParameters;
     }
     
     private Type declaredType;
@@ -62,17 +52,6 @@ public class BehaviouralEntity extends ContainerEntity {
 
     public void setCyclomaticComplexity(Number cyclomaticComplexity) {
         this.cyclomaticComplexity = cyclomaticComplexity;
-    }
-    
-    private Number numberOfComments;
-    
-    @FameProperty(name = "numberOfComments")
-    public Number getNumberOfComments() {
-        return numberOfComments;
-    }
-
-    public void setNumberOfComments(Number numberOfComments) {
-        this.numberOfComments = numberOfComments;
     }
     
     private Collection<ImplicitVariable> implicitVariables; 
@@ -129,17 +108,6 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
-    private Number numberOfStatements;
-    
-    @FameProperty(name = "numberOfStatements")
-    public Number getNumberOfStatements() {
-        return numberOfStatements;
-    }
-
-    public void setNumberOfStatements(Number numberOfStatements) {
-        this.numberOfStatements = numberOfStatements;
-    }
-    
     private Collection<LocalVariable> localVariables; 
 
     @FameProperty(name = "localVariables", opposite = "parentBehaviouralEntity", derived = true)
@@ -194,15 +162,15 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
-    private Number numberOfLinesOfCode;
+    private Number numberOfStatements;
     
-    @FameProperty(name = "numberOfLinesOfCode")
-    public Number getNumberOfLinesOfCode() {
-        return numberOfLinesOfCode;
+    @FameProperty(name = "numberOfStatements")
+    public Number getNumberOfStatements() {
+        return numberOfStatements;
     }
 
-    public void setNumberOfLinesOfCode(Number numberOfLinesOfCode) {
-        this.numberOfLinesOfCode = numberOfLinesOfCode;
+    public void setNumberOfStatements(Number numberOfStatements) {
+        this.numberOfStatements = numberOfStatements;
     }
     
     private Collection<Reference> outgoingReferences; 
@@ -259,6 +227,71 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
+    private Number numberOfLinesOfCode;
+    
+    @FameProperty(name = "numberOfLinesOfCode")
+    public Number getNumberOfLinesOfCode() {
+        return numberOfLinesOfCode;
+    }
+
+    public void setNumberOfLinesOfCode(Number numberOfLinesOfCode) {
+        this.numberOfLinesOfCode = numberOfLinesOfCode;
+    }
+    
+//    private Collection<Activation> activations; 
+//
+//    @FameProperty(name = "activations", opposite = "behaviour", derived = true)
+//    public Collection<Activation> getActivations() {
+//        if (activations == null) {
+//            activations = new MultivalueSet<Activation>() {
+//                @Override
+//                protected void clearOpposite(Activation e) {
+//                    e.setBehaviour(null);
+//                }
+//                @Override
+//                protected void setOpposite(Activation e) {
+//                    e.setBehaviour(BehaviouralEntity.this);
+//                }
+//            };
+//        }
+//        return activations;
+//    }
+//    
+//    public void setActivations(Collection<? extends Activation> activations) {
+//        this.getActivations().clear();
+//        this.getActivations().addAll(activations);
+//    }                    
+//    
+//        
+//    public void addActivations(Activation one) {
+//        this.getActivations().add(one);
+//    }   
+//    
+//    public void addActivations(Activation one, Activation... many) {
+//        this.getActivations().add(one);
+//        for (Activation each : many)
+//            this.getActivations().add(each);
+//    }   
+//    
+//    public void addActivations(Iterable<? extends Activation> many) {
+//        for (Activation each : many)
+//            this.getActivations().add(each);
+//    }   
+//                
+//    public void addActivations(Activation[] many) {
+//        for (Activation each : many)
+//            this.getActivations().add(each);
+//    }
+//    
+//    public int numberOfActivations() {
+//        return getActivations().size();
+//    }
+//
+//    public boolean hasActivations() {
+//        return !getActivations().isEmpty();
+//    }
+    
+                
     private Collection<Invocation> outgoingInvocations; 
 
     @FameProperty(name = "outgoingInvocations", opposite = "sender", derived = true)
@@ -313,17 +346,6 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
-    private Number numberOfConditionals;
-    
-    @FameProperty(name = "numberOfConditionals")
-    public Number getNumberOfConditionals() {
-        return numberOfConditionals;
-    }
-
-    public void setNumberOfConditionals(Number numberOfConditionals) {
-        this.numberOfConditionals = numberOfConditionals;
-    }
-    
     private Collection<Invocation> incomingInvocations; 
 
     @FameProperty(name = "incomingInvocations", opposite = "candidates", derived = true)
@@ -374,6 +396,71 @@ public class BehaviouralEntity extends ContainerEntity {
 
     public boolean hasIncomingInvocations() {
         return !getIncomingInvocations().isEmpty();
+    }
+    
+                
+    private Number numberOfConditionals;
+    
+    @FameProperty(name = "numberOfConditionals")
+    public Number getNumberOfConditionals() {
+        return numberOfConditionals;
+    }
+
+    public void setNumberOfConditionals(Number numberOfConditionals) {
+        this.numberOfConditionals = numberOfConditionals;
+    }
+    
+    private Collection<Access> accesses; 
+
+    @FameProperty(name = "accesses", opposite = "accessor", derived = true)
+    public Collection<Access> getAccesses() {
+        if (accesses == null) {
+            accesses = new MultivalueSet<Access>() {
+                @Override
+                protected void clearOpposite(Access e) {
+                    e.setAccessor(null);
+                }
+                @Override
+                protected void setOpposite(Access e) {
+                    e.setAccessor(BehaviouralEntity.this);
+                }
+            };
+        }
+        return accesses;
+    }
+    
+    public void setAccesses(Collection<? extends Access> accesses) {
+        this.getAccesses().clear();
+        this.getAccesses().addAll(accesses);
+    }                    
+    
+        
+    public void addAccesses(Access one) {
+        this.getAccesses().add(one);
+    }   
+    
+    public void addAccesses(Access one, Access... many) {
+        this.getAccesses().add(one);
+        for (Access each : many)
+            this.getAccesses().add(each);
+    }   
+    
+    public void addAccesses(Iterable<? extends Access> many) {
+        for (Access each : many)
+            this.getAccesses().add(each);
+    }   
+                
+    public void addAccesses(Access[] many) {
+        for (Access each : many)
+            this.getAccesses().add(each);
+    }
+    
+    public int numberOfAccesses() {
+        return getAccesses().size();
+    }
+
+    public boolean hasAccesses() {
+        return !getAccesses().isEmpty();
     }
     
                 
@@ -428,60 +515,6 @@ public class BehaviouralEntity extends ContainerEntity {
 
     public boolean hasParameters() {
         return !getParameters().isEmpty();
-    }
-    
-                
-    private Collection<Access> accesses; 
-
-    @FameProperty(name = "accesses", opposite = "accessor", derived = true)
-    public Collection<Access> getAccesses() {
-        if (accesses == null) {
-            accesses = new MultivalueSet<Access>() {
-                @Override
-                protected void clearOpposite(Access e) {
-                    e.setAccessor(null);
-                }
-                @Override
-                protected void setOpposite(Access e) {
-                    e.setAccessor(BehaviouralEntity.this);
-                }
-            };
-        }
-        return accesses;
-    }
-    
-    public void setAccesses(Collection<? extends Access> accesses) {
-        this.getAccesses().clear();
-        this.getAccesses().addAll(accesses);
-    }                    
-    
-        
-    public void addAccesses(Access one) {
-        this.getAccesses().add(one);
-    }   
-    
-    public void addAccesses(Access one, Access... many) {
-        this.getAccesses().add(one);
-        for (Access each : many)
-            this.getAccesses().add(each);
-    }   
-    
-    public void addAccesses(Iterable<? extends Access> many) {
-        for (Access each : many)
-            this.getAccesses().add(each);
-    }   
-                
-    public void addAccesses(Access[] many) {
-        for (Access each : many)
-            this.getAccesses().add(each);
-    }
-    
-    public int numberOfAccesses() {
-        return getAccesses().size();
-    }
-
-    public boolean hasAccesses() {
-        return !getAccesses().isEmpty();
     }
     
                 

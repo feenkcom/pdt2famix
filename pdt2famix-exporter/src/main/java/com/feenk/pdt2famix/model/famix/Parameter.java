@@ -14,7 +14,7 @@ public class Parameter extends StructuralEntity {
 
     private BehaviouralEntity parentBehaviouralEntity;
     
-    @FameProperty(name = "parentBehaviouralEntity", opposite = "parameters")
+    @FameProperty(name = "parentBehaviouralEntity", opposite = "parameters", container = true)
     public BehaviouralEntity getParentBehaviouralEntity() {
         return parentBehaviouralEntity;
     }
