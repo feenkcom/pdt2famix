@@ -9,15 +9,18 @@ import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.eclipse.dltk.core.IMember;
+import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.dltk.core.IParent;
 import org.eclipse.dltk.core.IProjectFragment;
@@ -57,6 +60,7 @@ import com.feenk.pdt2famix.model.famix.JavaSourceLanguage;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.NamedEntity;
 import com.feenk.pdt2famix.model.famix.Namespace;
+import com.feenk.pdt2famix.model.famix.Parameter;
 import com.feenk.pdt2famix.model.famix.PrimitiveType;
 import com.feenk.pdt2famix.model.famix.ScopingEntity;
 import com.feenk.pdt2famix.model.famix.SourcedEntity;
@@ -293,7 +297,20 @@ public class Importer {
 		/*	JDT2FAMIX: binding.getDeclaringClass() might be null when you invoke a method from a class that is not in the path
 			It looks like calling getMethodDeclaration is more robust. */
 		/* In PDT  getMethodDeclaration() does not exist in the method binding /*/
-		return ensureMethodFromMethodBinding(binding, ensureTypeFromTypeBinding(binding.getDeclaringClass()));
+		
+		ITypeBinding classBinding = binding.getDeclaringClass();
+		Type famixClassType;
+		if (classBinding == null || (classBinding.getPHPElement() != null && classBinding.getPHPElement() == this.currentSourceModel)) {
+			// Sometimes in the parser the type containing a library method 
+			// does not resolve correcly: if we resolve the binding of the type we 
+			// get the current source module.
+			// If we encounter that then we just use the unknown type.
+			famixClassType = unknownType();
+		} else {
+			famixClassType = ensureTypeFromTypeBinding(classBinding);
+		}
+		
+		return ensureMethodFromMethodBinding(binding, famixClassType);
 	}
 	
 	public Method ensureMethodFromMethodBinding(IMethodBinding methodBinding, Type parentType) {
@@ -342,8 +359,20 @@ public class Importer {
 		return method;
 	}
 	
+	// PARAMETERS 
 	
-	//ATTRIBUTE
+	public Parameter ensureParameterWithinCurrentMethodFromVariableBinding(IVariableBinding binding) {
+		Method method = (Method) topOfContainerStack();
+		Optional<Parameter> possibleParameter = method.getParameters()
+			.stream()
+			.filter(p -> p.getName().equals(binding.getName()))
+			.findAny();
+		if (possibleParameter.isPresent())
+			return possibleParameter.get();
+		return null;
+	}
+	
+	// ATTRIBUTE
 	
 	public Attribute ensureAttributeForFieldDeclaration(SingleFieldDeclaration fieldDeclaration) {
 		IVariableBinding variableBinding = fieldDeclaration.getName().resolveVariableBinding();
@@ -452,30 +481,53 @@ public class Importer {
 	
 	public StructuralEntity ensureStructuralEntityFromExpression(Expression expression) {
 		IVariableBinding variableBinding = null;
-		if (expression instanceof Variable) {
+		if (expression.getClass().equals(Variable.class)) {
 			variableBinding = ((Variable) expression).resolveVariableBinding();
 		} else if (expression instanceof FieldAccess) {
-			variableBinding = ((FieldAccess) expression).resolveFieldBinding();
+			ITypeBinding contaierTypeBinding = ((FieldAccess) expression).getDispatcher().resolveTypeBinding();
+			if ( contaierTypeBinding == null || (contaierTypeBinding.getPHPElement() == this.currentSourceModel)) {
+				// Like in a few other cases the binding here gets resolved to the wrong module.
+				System.out.println();
+			} else {
+				variableBinding = ((FieldAccess) expression).resolveFieldBinding();
+			}
 		}
 		
 		if (variableBinding != null) {
 			if (variableBinding.isField())
 				return ensureAttributeForVariableBinding(variableBinding);
+			if (variableBinding.isParameter() || (variableBinding.isLocal() && isVariableMethodParameter(variableBinding) ) )
+				return ensureParameterWithinCurrentMethodFromVariableBinding(variableBinding);
+//			if (variableBinding.isLocal()) 
+//				return null;
+		}
+		return null;
+	}
+	
+	/**
+	 * I try to detect if the given variable binding is a method parameter.
+	 * I am needed as org.eclipse.php.core.ast.node.VariableBinding#isParameter() just returns false.
+	 */
+	private boolean isVariableMethodParameter(IVariableBinding variableBinding) {
+		if (variableBinding.getPHPElement()==null ) {
+			return false;
+		}
+		if ( (variableBinding.getPHPElement().getElementType() == IModelElement.FIELD) == false ) {
+			return false;
 		}
 		
-//		if (expression instanceof Variable) {
-//			ITypeBinding simpleNameBinding = ((Variable) expression).resolveVariableBinding();
-//			if (simpleNameBinding instanceof IVariableBinding) {
-//				IVariableBinding binding = ((IVariableBinding) simpleNameBinding).getVariableDeclaration();
-//				if (binding.isField())
-//					return ensureAttributeForVariableBinding(binding);
-//				if (binding.isParameter())
-//					return ensureParameterWithinCurrentMethodFromVariableBinding(binding);
-//				if (binding.isEnumConstant())
-//					return ensureEnumValueFromVariableBinding(binding);
-//			}
-//		}
-		return null;
+		IModelElement fieldElement = variableBinding.getPHPElement();
+		if (fieldElement.getParent() == null || (fieldElement.getParent().getElementType() == IModelElement.METHOD) == false) {
+			return false;
+		}
+		
+		IMethod methodElement = (IMethod)(fieldElement.getParent());
+		try {
+			return Arrays.asList(methodElement.getParameterNames()).contains(variableBinding.getName());
+		} catch (ModelException e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 	
 	/**
@@ -722,6 +774,7 @@ public class Importer {
 	// EXPORT
 
 	public void exportMSE(String fileName) {
+		
 		try {
 			repository.exportMSE(new FileWriter(fileName));
 		} catch (IOException e) {

@@ -94,29 +94,5 @@ public class MethodsWithLocalInvocationsToThisTest extends OneSampleTestCase {
 		
 		assertInvocationsBetweenMethods(test2, test21, 1, null);
 	}
-
-	private void assertInvocationsBetweenMethods(BehaviouralEntity sender, BehaviouralEntity candidate, int numberOfInvocations, NamedEntity receiver) {
-		List<Invocation> outgoingInvocations =  sender.getOutgoingInvocations().stream()
-			.filter(invocation -> invocation.getCandidates().contains(candidate))
-			.collect(Collectors.toList());
-		assertEquals(numberOfInvocations, outgoingInvocations.size());
-		List<Invocation> incomingInvocations = candidate.getIncomingInvocations().stream()
-			.filter(invocation -> invocation.getSender().equals(sender))
-			.collect(Collectors.toList());
-		assertEquals(new HashSet<>(Arrays.asList(outgoingInvocations)), new HashSet<>(Arrays.asList(incomingInvocations)));
-		outgoingInvocations.stream().forEach(
-			invocation -> assertInvocationProperties(invocation, sender, candidate, receiver));
-	}
-
-	private void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity candidate, NamedEntity receiver) {
-		assertInvocationProperties(invocation, sender, new BehaviouralEntity[] {candidate}, receiver);	
-	}
-
-	private void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity[] candidates, NamedEntity receiver) {
-		invocation.getSender();
-		assertEquals(candidates.length, invocation.getCandidates().size());
-		assertEquals(receiver, invocation.getReceiver());
-		assertEquals(new HashSet<>(Arrays.asList(candidates)), new HashSet<>(invocation.getCandidates()));
-	}
 	
 }

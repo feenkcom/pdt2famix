@@ -1,10 +1,7 @@
 package com.feenk.pdt2famix.test.support;
 
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Before;
 
-import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.Type;
 
 public abstract class OneSampleTestCase extends InPhpTestCase {

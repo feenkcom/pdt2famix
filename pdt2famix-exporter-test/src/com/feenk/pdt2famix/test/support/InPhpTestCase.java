@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
@@ -30,8 +31,11 @@ import org.junit.BeforeClass;
 
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Attribute;
+import com.feenk.pdt2famix.model.famix.BehaviouralEntity;
 import com.feenk.pdt2famix.model.famix.Inheritance;
+import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
+import com.feenk.pdt2famix.model.famix.NamedEntity;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Trait;
 import com.feenk.pdt2famix.model.famix.Type;
@@ -215,6 +219,32 @@ public abstract class InPhpTestCase {
 		assertEquals(parentType, attribute.getParentType());
 		assertEquals(declaredType, attribute.getDeclaredType());
 		//assertEquals(attribute.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
+	}
+	
+	
+	// ASSERTIONS INVOCATIONS
+	
+	protected void assertInvocationsBetweenMethods(BehaviouralEntity sender, BehaviouralEntity candidate, int numberOfInvocations, NamedEntity receiver) {
+		List<Invocation> outgoingInvocations =  sender.getOutgoingInvocations().stream()
+			.filter(invocation -> invocation.getCandidates().contains(candidate))
+			.collect(Collectors.toList());
+		assertEquals(numberOfInvocations, outgoingInvocations.size());
+		List<Invocation> incomingInvocations = candidate.getIncomingInvocations().stream()
+			.filter(invocation -> invocation.getSender().equals(sender))
+			.collect(Collectors.toList());
+		assertEquals(new HashSet<>(Arrays.asList(outgoingInvocations)), new HashSet<>(Arrays.asList(incomingInvocations)));
+		outgoingInvocations.stream().forEach(
+			invocation -> assertInvocationProperties(invocation, sender, candidate, receiver));
+	}
+
+	protected void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity candidate, NamedEntity receiver) {
+		assertInvocationProperties(invocation, sender, new BehaviouralEntity[] {candidate}, receiver);	
+	}
+
+	protected void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity[] candidates, NamedEntity receiver) {
+		assertEquals(candidates.length, invocation.getCandidates().size());
+		assertEquals(receiver, invocation.getReceiver());
+		assertEquals(new HashSet<>(Arrays.asList(candidates)), new HashSet<>(invocation.getCandidates()));
 	}
 
 	// UTILS MODEL ACCESSING

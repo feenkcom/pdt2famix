@@ -1,7 +1,6 @@
 // Automagically generated code, please do not change
 package com.feenk.pdt2famix.model.famix;
 
-//import com.feenk.pdt2famix.model.dynamix.Activation;
 import ch.akuhn.fame.internal.MultivalueSet;
 import ch.akuhn.fame.FameProperty;
 import ch.akuhn.fame.FameDescription;
@@ -108,6 +107,17 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
+    private Number numberOfStatements;
+    
+    @FameProperty(name = "numberOfStatements")
+    public Number getNumberOfStatements() {
+        return numberOfStatements;
+    }
+
+    public void setNumberOfStatements(Number numberOfStatements) {
+        this.numberOfStatements = numberOfStatements;
+    }
+    
     private Collection<LocalVariable> localVariables; 
 
     @FameProperty(name = "localVariables", opposite = "parentBehaviouralEntity", derived = true)
@@ -162,15 +172,15 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
-    private Number numberOfStatements;
+    private Number numberOfLinesOfCode;
     
-    @FameProperty(name = "numberOfStatements")
-    public Number getNumberOfStatements() {
-        return numberOfStatements;
+    @FameProperty(name = "numberOfLinesOfCode")
+    public Number getNumberOfLinesOfCode() {
+        return numberOfLinesOfCode;
     }
 
-    public void setNumberOfStatements(Number numberOfStatements) {
-        this.numberOfStatements = numberOfStatements;
+    public void setNumberOfLinesOfCode(Number numberOfLinesOfCode) {
+        this.numberOfLinesOfCode = numberOfLinesOfCode;
     }
     
     private Collection<Reference> outgoingReferences; 
@@ -225,71 +235,6 @@ public class BehaviouralEntity extends ContainerEntity {
     public boolean hasOutgoingReferences() {
         return !getOutgoingReferences().isEmpty();
     }
-    
-                
-    private Number numberOfLinesOfCode;
-    
-    @FameProperty(name = "numberOfLinesOfCode")
-    public Number getNumberOfLinesOfCode() {
-        return numberOfLinesOfCode;
-    }
-
-    public void setNumberOfLinesOfCode(Number numberOfLinesOfCode) {
-        this.numberOfLinesOfCode = numberOfLinesOfCode;
-    }
-    
-//    private Collection<Activation> activations; 
-//
-//    @FameProperty(name = "activations", opposite = "behaviour", derived = true)
-//    public Collection<Activation> getActivations() {
-//        if (activations == null) {
-//            activations = new MultivalueSet<Activation>() {
-//                @Override
-//                protected void clearOpposite(Activation e) {
-//                    e.setBehaviour(null);
-//                }
-//                @Override
-//                protected void setOpposite(Activation e) {
-//                    e.setBehaviour(BehaviouralEntity.this);
-//                }
-//            };
-//        }
-//        return activations;
-//    }
-//    
-//    public void setActivations(Collection<? extends Activation> activations) {
-//        this.getActivations().clear();
-//        this.getActivations().addAll(activations);
-//    }                    
-//    
-//        
-//    public void addActivations(Activation one) {
-//        this.getActivations().add(one);
-//    }   
-//    
-//    public void addActivations(Activation one, Activation... many) {
-//        this.getActivations().add(one);
-//        for (Activation each : many)
-//            this.getActivations().add(each);
-//    }   
-//    
-//    public void addActivations(Iterable<? extends Activation> many) {
-//        for (Activation each : many)
-//            this.getActivations().add(each);
-//    }   
-//                
-//    public void addActivations(Activation[] many) {
-//        for (Activation each : many)
-//            this.getActivations().add(each);
-//    }
-//    
-//    public int numberOfActivations() {
-//        return getActivations().size();
-//    }
-//
-//    public boolean hasActivations() {
-//        return !getActivations().isEmpty();
-//    }
     
                 
     private Collection<Invocation> outgoingInvocations; 

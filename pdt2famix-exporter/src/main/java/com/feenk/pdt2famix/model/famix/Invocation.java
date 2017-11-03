@@ -84,17 +84,6 @@ public class Invocation extends Association {
         receiver.getReceivingInvocations().add(this);
     }
     
-    private String signature;
-    
-    @FameProperty(name = "signature")
-    public String getSignature() {
-        return signature;
-    }
-
-    public void setSignature(String signature) {
-        this.signature = signature;
-    }
-    
     private BehaviouralEntity sender;
     
     @FameProperty(name = "sender", opposite = "outgoingInvocations")
@@ -110,6 +99,17 @@ public class Invocation extends Association {
         this.sender = sender;
         if (sender == null) return;
         sender.getOutgoingInvocations().add(this);
+    }
+    
+    private String signature;
+    
+    @FameProperty(name = "signature")
+    public String getSignature() {
+        return signature;
+    }
+
+    public void setSignature(String signature) {
+        this.signature = signature;
     }
     
 

@@ -12,11 +12,9 @@ public class FILEModel {
     }
     
     public static void importInto(MetaRepository metamodel) {
-		metamodel.with(com.feenk.pdt2famix.model.file.Folder.class);
-		metamodel.with(com.feenk.pdt2famix.model.file.File.class);
-		metamodel.with(com.feenk.pdt2famix.model.file.FileGroup.class);
 		metamodel.with(com.feenk.pdt2famix.model.file.AbstractFile.class);
-		metamodel.with(com.feenk.pdt2famix.model.file.FolderGroup.class);
+		metamodel.with(com.feenk.pdt2famix.model.file.File.class);
+		metamodel.with(com.feenk.pdt2famix.model.file.Folder.class);
 
     }
 

@@ -228,17 +228,18 @@ public class AstVisitor extends AbstractVisitor {
 	
 	@Override
 	public boolean visit(MethodInvocation methodInvocation) {
-		methodInvocation.getMethod().getFunctionName().getName().toString();
-		methodInvocation.getDispatcher().resolveTypeBinding();
+//		methodInvocation.getMethod().getFunctionName().getName().toString();
+//		methodInvocation.getDispatcher().resolveTypeBinding();
 		// ((Variable)methodInvocation.getDispatcher()).resolveVariableBinding();
 		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
+//		methodBinding.getParameterTypes();
+//		methodInvocation.getMethod().resolveFunctionBinding();
 		Expression dispatcherExpression = methodInvocation.getDispatcher();
 		Invocation invocation = importer.createInvocationFromMethodBinding(methodInvocation.resolveMethodBinding());
 		if (dispatcherExpression != null) {
 			invocation.setReceiver(importer.ensureStructuralEntityFromExpression(dispatcherExpression));
 		}
 		//importer.createAccessFromExpression(methodInvocation.getMethod().);
-		//invocation.setReceiver(importer.ensureStructuralEntityFromExpression(methodInvocation.getExpression()));
 //		node.arguments().stream().forEach(arg -> importer.createAccessFromExpression((Expression) arg));
 		return true;
 

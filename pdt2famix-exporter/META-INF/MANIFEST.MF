@@ -14,5 +14,5 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
 Export-Package: com.feenk.pdt2famix,
  com.feenk.pdt2famix.model.famix
-Bundle-ClassPath: lib/ch/akuhn/fame/1.1/fame-1.1.jar,
- .
+Bundle-ClassPath: .,
+ lib/ch/akuhn/fame/1.2/fame-1.2.jar
