@@ -1,6 +1,6 @@
 <?php
 
-class MethodsWithLocalInvocations {
+class MethodsWithLocalInvocationsToThis {
  
 	private function test1() {
 		

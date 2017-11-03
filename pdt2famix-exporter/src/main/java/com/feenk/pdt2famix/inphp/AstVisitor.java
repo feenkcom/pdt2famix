@@ -1,17 +1,14 @@
 package com.feenk.pdt2famix.inphp;
 
-import java.util.List;
-
 import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.php.core.ast.nodes.AnonymousClassDeclaration;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
-import org.eclipse.php.core.ast.nodes.ConstantDeclaration;
 import org.eclipse.php.core.ast.nodes.Expression;
+import org.eclipse.php.core.ast.nodes.FieldAccess;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
-import org.eclipse.php.core.ast.nodes.Identifier;
 import org.eclipse.php.core.ast.nodes.InterfaceDeclaration;
 import org.eclipse.php.core.ast.nodes.LambdaFunctionDeclaration;
 import org.eclipse.php.core.ast.nodes.MethodDeclaration;
@@ -53,11 +50,11 @@ public class AstVisitor extends AbstractVisitor {
 //	}
 //	
 //	
-//	@Override
-//	public boolean visit(FieldAccess fieldAccess) {
-//		// TODO Auto-generated method stub
-//		return super.visit(fieldAccess);
-//	}
+	@Override
+	public boolean visit(FieldAccess fieldAccess) {
+		// TODO Auto-generated method stub
+		return super.visit(fieldAccess);
+	}
 	
 	@Override
 	public boolean visit(LambdaFunctionDeclaration lambdaFunctionDeclaration) {
@@ -233,7 +230,7 @@ public class AstVisitor extends AbstractVisitor {
 	public boolean visit(MethodInvocation methodInvocation) {
 		methodInvocation.getMethod().getFunctionName().getName().toString();
 		methodInvocation.getDispatcher().resolveTypeBinding();
-		((Variable)methodInvocation.getDispatcher()).resolveVariableBinding();
+		// ((Variable)methodInvocation.getDispatcher()).resolveVariableBinding();
 		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
 		Expression dispatcherExpression = methodInvocation.getDispatcher();
 		Invocation invocation = importer.createInvocationFromMethodBinding(methodInvocation.resolveMethodBinding());

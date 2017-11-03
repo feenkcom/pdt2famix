@@ -30,6 +30,7 @@ import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.ASTParser;
 import org.eclipse.php.core.ast.nodes.ArrayCreation;
 import org.eclipse.php.core.ast.nodes.Expression;
+import org.eclipse.php.core.ast.nodes.FieldAccess;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
@@ -43,6 +44,7 @@ import org.eclipse.php.core.compiler.PHPFlags;
 import org.eclipse.php.core.compiler.ast.nodes.NamespaceReference;
 
 import com.feenk.pdt2famix.inphp.AstVisitor;
+import com.feenk.pdt2famix.model.famix.Access;
 import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.ContainerEntity;
 import com.feenk.pdt2famix.model.famix.Entity;
@@ -107,6 +109,12 @@ public class Importer {
 	public Collection currentInvocations() {
 		return (Collection) repository().getElements().stream()
 			.filter(entity -> entity instanceof Invocation)
+			.collect(Collectors.toList());
+	}
+	
+	public Collection currentAccesses() {
+		return (Collection) repository().getElements().stream()
+			.filter(entity -> entity instanceof Access)
 			.collect(Collectors.toList());
 	}
 		
@@ -443,17 +451,18 @@ public class Importer {
 	}
 	
 	public StructuralEntity ensureStructuralEntityFromExpression(Expression expression) {
+		IVariableBinding variableBinding = null;
 		if (expression instanceof Variable) {
-			IVariableBinding simpleNameBinding = ((Variable) expression).resolveVariableBinding();
-			if (simpleNameBinding != null) {
-				if (simpleNameBinding.isField())
-					return ensureAttributeForVariableBinding(simpleNameBinding);
-//				if (binding.isParameter())
-//					return ensureParameterWithinCurrentMethodFromVariableBinding(binding);
-//				if (binding.isEnumConstant())
-//					return ensureEnumValueFromVariableBinding(binding);
-			}
+			variableBinding = ((Variable) expression).resolveVariableBinding();
+		} else if (expression instanceof FieldAccess) {
+			variableBinding = ((FieldAccess) expression).resolveFieldBinding();
 		}
+		
+		if (variableBinding != null) {
+			if (variableBinding.isField())
+				return ensureAttributeForVariableBinding(variableBinding);
+		}
+		
 //		if (expression instanceof Variable) {
 //			ITypeBinding simpleNameBinding = ((Variable) expression).resolveVariableBinding();
 //			if (simpleNameBinding instanceof IVariableBinding) {

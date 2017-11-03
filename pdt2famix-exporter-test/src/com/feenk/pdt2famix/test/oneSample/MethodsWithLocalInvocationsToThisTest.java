@@ -3,7 +3,6 @@ package com.feenk.pdt2famix.test.oneSample;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -16,10 +15,10 @@ import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.NamedEntity;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
-public class MethodsWithLocalInvocationsTest extends OneSampleTestCase {
+public class MethodsWithLocalInvocationsToThisTest extends OneSampleTestCase {
 
 	protected String sample() {
-		return removeTestSuffix(MethodsWithLocalInvocationsTest.class.getSimpleName());
+		return removeTestSuffix(MethodsWithLocalInvocationsToThisTest.class.getSimpleName());
 	}
 	
 	@Test
@@ -76,6 +75,24 @@ public class MethodsWithLocalInvocationsTest extends OneSampleTestCase {
 		
 		assertInvocationsBetweenMethods(main2, test1, 1, null);
 		assertInvocationsBetweenMethods(main2, test3, 2, null);
+	}
+	
+	@Test 
+	public void testMain1Invocations() {
+		Method main1 = methodNamed("main1");
+		Method test1 = methodNamed("test1");
+		Method test2 = methodNamed("test2");
+		
+		assertInvocationsBetweenMethods(main1, test1, 1, null);
+		assertInvocationsBetweenMethods(main1, test2, 1, null);
+	}
+	
+	@Test 
+	public void testTest2Invocations() {
+		Method test2 = methodNamed("test2");
+		Method test21 = methodNamed("test21");
+		
+		assertInvocationsBetweenMethods(test2, test21, 1, null);
 	}
 
 	private void assertInvocationsBetweenMethods(BehaviouralEntity sender, BehaviouralEntity candidate, int numberOfInvocations, NamedEntity receiver) {
