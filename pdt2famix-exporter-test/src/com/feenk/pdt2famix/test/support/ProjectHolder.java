@@ -3,6 +3,7 @@ package com.feenk.pdt2famix.test.support;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.dltk.core.DLTKCore;
@@ -26,6 +27,7 @@ public class ProjectHolder {
 		project.close(new NullProgressMonitor() /* IProgressMonitor */);
 		project.open(new NullProgressMonitor() /* IProgressMonitor */);
 		project.refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
+		project.build(IncrementalProjectBuilder.FULL_BUILD, null);
 		ResourcesPlugin.getWorkspace().save(true, null);
 		project.open(new NullProgressMonitor() /* IProgressMonitor */);
 		

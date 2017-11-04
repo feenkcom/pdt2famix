@@ -14,8 +14,8 @@ public class TraitWithSimpleMethods extends OneSampleTestCase {
 	
 	@Test
 	public void testModelSize() {
-		assertEquals(1, importer.namespaces().size());
-		assertEquals(1, importer.types().size());
+		assertEquals(2, importer.namespaces().size());
+		assertEquals(2, importer.types().size());
 		assertEquals(4, importer.methods().size());
 	}
 	

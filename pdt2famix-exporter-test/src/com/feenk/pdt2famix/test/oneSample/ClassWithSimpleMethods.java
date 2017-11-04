@@ -16,14 +16,14 @@ public class ClassWithSimpleMethods extends OneSampleTestCase {
 	
 	@Test
 	public void testModelSize() {
-		assertEquals(1, importer.namespaces().size());
-		assertEquals(1, importer.types().size());
+		assertEquals(2, importer.namespaces().size());
+		assertEquals(2, importer.types().size());
 		assertEquals(4, importer.methods().size());
 	}
 	
 	@Test
 	public void testNamespace() {	
-		assertNamespacesPresent(Importer.DEFAULT_NAMESPACE_NAME);
+		assertNamespacesPresent(Importer.DEFAULT_NAMESPACE_NAME, Importer.SYSTEM_NAMESPACE_NAME);
 		assertNamespaceTypes(Importer.DEFAULT_NAMESPACE_NAME, type);
 	}
 	

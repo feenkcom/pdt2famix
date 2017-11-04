@@ -37,6 +37,7 @@ import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.NamedEntity;
 import com.feenk.pdt2famix.model.famix.Namespace;
+import com.feenk.pdt2famix.model.famix.Parameter;
 import com.feenk.pdt2famix.model.famix.Trait;
 import com.feenk.pdt2famix.model.famix.Type;
 
@@ -265,6 +266,13 @@ public abstract class InPhpTestCase {
 	        .get();
 	}
 	
+	protected Parameter parameterInBehaviour(BehaviouralEntity parentBehaviour, String parameterName) {
+		List<Parameter> possibleParameters = parentBehaviour.getParameters().stream()
+				.filter( aParameter -> aParameter.getName().equals(parameterName))
+				.collect(Collectors.toList());
+		assertEquals(1, possibleParameters.size());
+		return possibleParameters.get(0);
+	}
 	
 	protected Type typeNamed(String typeName) {
 		return importer.types()

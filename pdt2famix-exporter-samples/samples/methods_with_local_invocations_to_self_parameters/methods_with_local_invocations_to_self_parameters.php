@@ -6,7 +6,7 @@ class MethodsWithLocalInvocationsToSelfParameters {
 		
 	}
 	
-	public function main1(MethodsWithLocalInvocationsToSelfAttributes $param1, MethodsWithLocalInvocationsToSelfAttributes $param2) {
+	public function main1(MethodsWithLocalInvocationsToSelfParameters $param1, MethodsWithLocalInvocationsToSelfParameters $param2) {
 		$param1->helper1();
 		$param2->helper2();
 	}
@@ -15,12 +15,12 @@ class MethodsWithLocalInvocationsToSelfParameters {
 		
 	}
 	
-	public function main2(MethodsWithLocalInvocationsToSelfAttributes $param1, MethodsWithLocalInvocationsToSelfAttributes $param2) {
+	public function main2(MethodsWithLocalInvocationsToSelfParameters $param1, MethodsWithLocalInvocationsToSelfParameters $param2) {
 		$param1->helper2();
 		$param2->helper2();
 	}
 	
-	public function mainRecursion(MethodsWithLocalInvocationsToSelfAttributes $param) {
+	public function mainRecursion(MethodsWithLocalInvocationsToSelfParameters $param) {
 		$param->mainRecursion();
 	}
 }

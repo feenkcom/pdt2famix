@@ -34,12 +34,14 @@ import org.eclipse.php.core.ast.nodes.ASTParser;
 import org.eclipse.php.core.ast.nodes.ArrayCreation;
 import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.FieldAccess;
+import org.eclipse.php.core.ast.nodes.FormalParameter;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.core.ast.nodes.Identifier;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.Program;
+import org.eclipse.php.core.ast.nodes.Reference;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
 import org.eclipse.php.core.ast.nodes.Variable;
 import org.eclipse.php.core.ast.visitor.Visitor;
@@ -361,6 +363,41 @@ public class Importer {
 	
 	// PARAMETERS 
 	
+	//PARAMETER
+	
+	public Parameter parameterFromFormalParameterDeclaration(FormalParameter formalParameter, Method famixMethod) {
+		String name = getNameFromExpression(formalParameter.getParameterName());
+		
+		Parameter parameter = new Parameter();
+		parameter.setName(name);
+		parameter.setParentBehaviouralEntity(famixMethod);
+		
+		Type parameterType = null;
+		Expression declatedType = formalParameter.getParameterType();
+		Expression defaultValue = formalParameter.getDefaultValue();
+		
+		if (declatedType != null) {
+			ITypeBinding resolvedTypeBinding = declatedType.resolveTypeBinding();
+			if (resolvedTypeBinding != null) {
+				parameterType = ensureTypeFromTypeBinding(resolvedTypeBinding);
+			}
+		}
+		if (defaultValue != null) {
+			ITypeBinding resolvedTypeBinding = defaultValue.resolveTypeBinding();
+			Type defaultValueType = null;
+			if (resolvedTypeBinding != null) {
+				defaultValueType = ensureTypeFromTypeBinding(resolvedTypeBinding);
+			}
+			if (parameterType == null) {
+				parameterType = defaultValueType;
+			}
+		}
+		
+		parameter.setDeclaredType(parameterType);
+
+		return parameter;
+	}
+	
 	public Parameter ensureParameterWithinCurrentMethodFromVariableBinding(IVariableBinding binding) {
 		Method method = (Method) topOfContainerStack();
 		Optional<Parameter> possibleParameter = method.getParameters()
@@ -423,18 +460,7 @@ public class Importer {
 	
 	public Attribute ensureAttributeFromFieldDeclarationIntoParentType(SingleFieldDeclaration fieldDeclaration) {
 		Type parentType = this.topFromContainerStack(Type.class);
-		String name ;
-		
-		// This will be problematic. Right now we just hardcode the format of a variable name.
-		if (fieldDeclaration.getName().getName() instanceof Identifier) {
-			name = ((Identifier)fieldDeclaration.getName().getName()).getName();
-			if (fieldDeclaration.getName().isDollared()) {
-				name = "$" + name;
-			}
-		} else {
-			throw new RuntimeException("Update the logic for determining the type");
-		}
-		
+		String name = getNameFromExpression(fieldDeclaration.getName());
 		String qualifiedName = entitiesToKeys.get(parentType)+"^"+name;
 		if (attributes.has(qualifiedName)) 
 			return attributes.named(qualifiedName);
@@ -641,6 +667,21 @@ public class Importer {
 //			entity.addModifiers("volatile");
 		/*	We do not extract the static modifier here because we want to set the hasClassScope property
 			and we do that specifically only for attributes and methods */  
+	}
+	
+	private String getNameFromExpression(Expression expression) {
+		switch (expression.getType()) {
+		case ASTNode.REFERENCE:
+			expression = ((Reference) expression).getExpression();
+			if (expression.getType() != ASTNode.VARIABLE) {
+				throw new IllegalStateException();
+			}
+		case ASTNode.VARIABLE:
+			Variable variable = (Variable) expression;
+			final Identifier variableName = (Identifier) variable.getName();
+			return (variable.isDollared() ? "$" : "") + variableName.getName();
+		}
+		throw new IllegalStateException();
 	}
 	
 	private ContainerEntity ensureContainerEntityForTypeBinding(ITypeBinding binding) {

@@ -16,7 +16,7 @@ public class ContainerEntity extends NamedEntity {
 
     private Collection<Type> types; 
 
-    @FameProperty(name = "types", opposite = "container", derived = true)
+    @FameProperty(name = "types", opposite = "container")
     public Collection<Type> getTypes() {
         if (types == null) {
             types = new MultivalueSet<Type>() {
@@ -70,7 +70,7 @@ public class ContainerEntity extends NamedEntity {
                 
     private Collection<Function> functions; 
 
-    @FameProperty(name = "functions", opposite = "container", derived = true)
+    @FameProperty(name = "functions", opposite = "container")
     public Collection<Function> getFunctions() {
         if (functions == null) {
             functions = new MultivalueSet<Function>() {

@@ -2,17 +2,10 @@ package com.feenk.pdt2famix.test.oneSample;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.junit.Test;
 
-import com.feenk.pdt2famix.model.famix.BehaviouralEntity;
 import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
-import com.feenk.pdt2famix.model.famix.NamedEntity;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class MethodsWithLocalInvocationsToThisTest extends OneSampleTestCase {

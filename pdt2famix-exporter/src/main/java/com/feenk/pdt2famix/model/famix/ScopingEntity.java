@@ -87,7 +87,7 @@ public class ScopingEntity extends ContainerEntity {
     
     private Collection<ScopingEntity> childScopes; 
 
-    @FameProperty(name = "childScopes", opposite = "parentScope", derived = true)
+    @FameProperty(name = "childScopes", opposite = "parentScope")
     public Collection<ScopingEntity> getChildScopes() {
         if (childScopes == null) {
             childScopes = new MultivalueSet<ScopingEntity>() {

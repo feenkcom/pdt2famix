@@ -1,11 +1,14 @@
 package com.feenk.pdt2famix.inphp;
 
+import java.util.Arrays;
+
 import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.php.core.ast.nodes.AnonymousClassDeclaration;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
 import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.FieldAccess;
+import org.eclipse.php.core.ast.nodes.FormalParameter;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
@@ -144,7 +147,7 @@ public class AstVisitor extends AbstractVisitor {
 	
 	@Override
 	public boolean visit(MethodDeclaration methodDeclarationNode) {
-		IMethodBinding methodBinding = methodDeclarationNode.resolveMethodBinding();
+ 		IMethodBinding methodBinding = methodDeclarationNode.resolveMethodBinding();
 		ITypeBinding declatingClass  = methodBinding.getDeclaringClass();
 		ITypeBinding[] returnType    = methodBinding.getReturnType();
 				
@@ -165,6 +168,11 @@ public class AstVisitor extends AbstractVisitor {
 		famixMethod.setIsStub(false);
 		importer.pushOnContainerStack(famixMethod);
 		
+		for (FormalParameter parameter: methodDeclarationNode.getFunction().formalParameters()) {
+			importer	.parameterFromFormalParameterDeclaration(parameter, famixMethod);
+		}
+		
+	
 //		node.parameters().
 //			stream().
 //			forEach(p -> 

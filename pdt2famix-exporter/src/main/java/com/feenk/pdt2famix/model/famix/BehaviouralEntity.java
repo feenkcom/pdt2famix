@@ -120,7 +120,7 @@ public class BehaviouralEntity extends ContainerEntity {
     
     private Collection<LocalVariable> localVariables; 
 
-    @FameProperty(name = "localVariables", opposite = "parentBehaviouralEntity", derived = true)
+    @FameProperty(name = "localVariables", opposite = "parentBehaviouralEntity")
     public Collection<LocalVariable> getLocalVariables() {
         if (localVariables == null) {
             localVariables = new MultivalueSet<LocalVariable>() {
@@ -172,20 +172,9 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
-    private Number numberOfLinesOfCode;
-    
-    @FameProperty(name = "numberOfLinesOfCode")
-    public Number getNumberOfLinesOfCode() {
-        return numberOfLinesOfCode;
-    }
-
-    public void setNumberOfLinesOfCode(Number numberOfLinesOfCode) {
-        this.numberOfLinesOfCode = numberOfLinesOfCode;
-    }
-    
     private Collection<Reference> outgoingReferences; 
 
-    @FameProperty(name = "outgoingReferences", opposite = "source", derived = true)
+    @FameProperty(name = "outgoingReferences", opposite = "source")
     public Collection<Reference> getOutgoingReferences() {
         if (outgoingReferences == null) {
             outgoingReferences = new MultivalueSet<Reference>() {
@@ -237,9 +226,20 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
+    private Number numberOfLinesOfCode;
+    
+    @FameProperty(name = "numberOfLinesOfCode")
+    public Number getNumberOfLinesOfCode() {
+        return numberOfLinesOfCode;
+    }
+
+    public void setNumberOfLinesOfCode(Number numberOfLinesOfCode) {
+        this.numberOfLinesOfCode = numberOfLinesOfCode;
+    }
+    
     private Collection<Invocation> outgoingInvocations; 
 
-    @FameProperty(name = "outgoingInvocations", opposite = "sender", derived = true)
+    @FameProperty(name = "outgoingInvocations", opposite = "sender")
     public Collection<Invocation> getOutgoingInvocations() {
         if (outgoingInvocations == null) {
             outgoingInvocations = new MultivalueSet<Invocation>() {
@@ -291,9 +291,20 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
+    private Number numberOfConditionals;
+    
+    @FameProperty(name = "numberOfConditionals")
+    public Number getNumberOfConditionals() {
+        return numberOfConditionals;
+    }
+
+    public void setNumberOfConditionals(Number numberOfConditionals) {
+        this.numberOfConditionals = numberOfConditionals;
+    }
+    
     private Collection<Invocation> incomingInvocations; 
 
-    @FameProperty(name = "incomingInvocations", opposite = "candidates", derived = true)
+    @FameProperty(name = "incomingInvocations", opposite = "candidates")
     public Collection<Invocation> getIncomingInvocations() {
         if (incomingInvocations == null) {
             incomingInvocations = new MultivalueSet<Invocation>() {
@@ -344,20 +355,9 @@ public class BehaviouralEntity extends ContainerEntity {
     }
     
                 
-    private Number numberOfConditionals;
-    
-    @FameProperty(name = "numberOfConditionals")
-    public Number getNumberOfConditionals() {
-        return numberOfConditionals;
-    }
-
-    public void setNumberOfConditionals(Number numberOfConditionals) {
-        this.numberOfConditionals = numberOfConditionals;
-    }
-    
     private Collection<Access> accesses; 
 
-    @FameProperty(name = "accesses", opposite = "accessor", derived = true)
+    @FameProperty(name = "accesses", opposite = "accessor")
     public Collection<Access> getAccesses() {
         if (accesses == null) {
             accesses = new MultivalueSet<Access>() {
@@ -411,7 +411,7 @@ public class BehaviouralEntity extends ContainerEntity {
                 
     private Collection<Parameter> parameters; 
 
-    @FameProperty(name = "parameters", opposite = "parentBehaviouralEntity", derived = true)
+    @FameProperty(name = "parameters", opposite = "parentBehaviouralEntity")
     public Collection<Parameter> getParameters() {
         if (parameters == null) {
             parameters = new MultivalueSet<Parameter>() {
