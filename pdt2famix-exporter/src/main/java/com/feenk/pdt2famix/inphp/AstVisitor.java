@@ -4,7 +4,9 @@ import java.util.Arrays;
 
 import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
+import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.AnonymousClassDeclaration;
+import org.eclipse.php.core.ast.nodes.Assignment;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
 import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.FieldAccess;
@@ -24,6 +26,7 @@ import org.eclipse.php.core.ast.nodes.Variable;
 import org.eclipse.php.core.ast.visitor.AbstractVisitor;
 
 import com.feenk.pdt2famix.Importer;
+import com.feenk.pdt2famix.model.famix.Access;
 import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
@@ -45,18 +48,21 @@ public class AstVisitor extends AbstractVisitor {
 		importer.logNullBinding(string, extraData, lineNumber);
 	}
 		
-//	@Override
-//	public boolean visit(Assignment assignment) {
-//		((FieldAccess)assignment.getLeftHandSide()).resolveFieldBinding().getDeclaringClass().getKey();
-//		// TODO Auto-generated method stub
-//		return super.visit(assignment);
-//	}
-//	
-//	
+	@Override
+	public boolean visit(Assignment assignment) {
+		// TODO Auto-generated method stub
+		return super.visit(assignment);
+	}
+	
 	@Override
 	public boolean visit(FieldAccess fieldAccess) {
-		// TODO Auto-generated method stub
-		return super.visit(fieldAccess);
+		
+		Access accces = importer.createAccessFromFieldAccessNode(fieldAccess);
+		if (fieldAccess.getParent().getType() == ASTNode.ASSIGNMENT) {
+			accces.setIsWrite(true);
+		}
+		
+		return true;
 	}
 	
 	@Override

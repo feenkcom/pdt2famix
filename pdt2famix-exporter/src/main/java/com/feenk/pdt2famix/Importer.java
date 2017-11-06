@@ -70,6 +70,7 @@ import com.feenk.pdt2famix.model.famix.SourcedEntity;
 import com.feenk.pdt2famix.model.famix.StructuralEntity;
 import com.feenk.pdt2famix.model.famix.Trait;
 import com.feenk.pdt2famix.model.famix.Type;
+import com.feenk.pdt2famix.model.famix.UnknownVariable;
 import com.feenk.pdt2famix.model.java.JavaModel;
 
 import ch.akuhn.fame.MetaRepository;
@@ -91,6 +92,7 @@ public class Importer {
 	private Namespace systemNamespace;
 	private Namespace unknownNamespace;
 	private Type unknownType;
+	private UnknownVariable unknownVariable;
 	
 	private Repository repository;
 	public Repository repository() { return repository; }
@@ -208,17 +210,43 @@ public class Importer {
 		return namespace;
 	}
 	
+	public Namespace unknownNamespace() {
+		if (unknownNamespace == null) {
+			unknownNamespace = new Namespace();
+			unknownNamespace.setName(UNKNOWN_NAME);
+			unknownNamespace.setIsStub(true);
+			namespaces.add(Famix.qualifiedNameOf(unknownNamespace), unknownNamespace); //TODO: this uses the java qualified like name
+		}
+		return unknownNamespace;
+	}
+	
+	public Namespace systemNamespace() {
+		if (systemNamespace == null) {
+			systemNamespace = new Namespace();
+			systemNamespace.setName(SYSTEM_NAMESPACE_NAME);
+			systemNamespace.setIsStub(true);
+			namespaces.add(Famix.qualifiedNameOf(systemNamespace), systemNamespace); //TODO: this uses the java qualified like name
+		}
+		return systemNamespace;
+	}
+	
 	// TYPE
 	
 	private Type protectedEnsureTypeFromTypeBinding(ITypeBinding binding) {
-		if (binding == null) {
+		if (isValidTypeBinding(binding) == false) {
 			return unknownType();
+		}
+		return ensureTypeFromTypeBinding(binding);
+	}
+	
+	private boolean isValidTypeBinding(ITypeBinding binding) {
+		if (binding == null) {
+			return false;
 		}
 		if ((binding.getPHPElement() != null && binding.getPHPElement() == currentSourceModel)) {
-			return unknownType();
+			return false;
 		}
-		
-		return ensureTypeFromTypeBinding(binding);
+		return true;
 	}
 	
 	public Type ensureTypeFromTypeBinding(ITypeBinding binding) {
@@ -280,6 +308,69 @@ public class Importer {
 		clazz.setIsInterface(binding.isInterface());
 		return clazz;
 	}
+	
+	private ContainerEntity ensureContainerEntityForTypeBinding(ITypeBinding binding) {
+		IMember declaringType;
+		
+		if (binding.getPHPElement() == null) {
+			// If the PHP element is nill but we have a primitive type we use the system namespace as the container.
+			if (binding.isPrimitive() || binding.isNullType() || binding.isArray()) {
+				return systemNamespace();
+			}
+			throw new RuntimeException("Update the detection of the parent");
+		}
+		
+		declaringType = ((IMember)binding.getPHPElement()).getDeclaringType();
+		
+		binding.getEvaluatedType().getTypeName();
+		binding.getPHPElement().getParent().getHandleIdentifier();
+		
+		if (declaringType != null) {
+			boolean isNamespace = false;
+			try {
+				isNamespace = PHPFlags.isNamespace(declaringType.getFlags());
+			} catch (ModelException e) {
+				e.printStackTrace();
+			}
+			if (isNamespace) {
+				return ensureNamespaceNamed(declaringType.getElementName());
+			}
+		} else {
+			return ensureNamespaceNamed(DEFAULT_NAMESPACE_NAME);
+		}
+		
+		throw new RuntimeException("Update the detection of the parent");
+	}
+	
+	/**
+	 * This is the type we used as a null object whenever we need to reference a type  
+	 */
+	public Type unknownType() {
+		if (unknownType == null) {
+			unknownType = ensureTypeNamedInUnknownNamespace(UNKNOWN_NAME);
+		}
+		return unknownType;
+	}
+	
+	private Type ensureTypeNamedInUnknownNamespace(String name) {
+		Type type = createTypeNamedInUnknownNamespace(name);
+		String qualifiedName = Famix.qualifiedNameOf(type); //TODO: this uses the java qualified like name
+		if (types.has(qualifiedName))
+			return types.named(qualifiedName);
+		else {
+			types.add(Famix.qualifiedNameOf(type), type);
+			return type;
+		}
+	}
+
+	private Type createTypeNamedInUnknownNamespace(String name) {
+		Type type = new Type();
+		type.setName(name);
+		type.setContainer(unknownNamespace());
+		type.setIsStub(true);
+		return type;
+	}
+	
 	
 	// INHERITANCE
 	
@@ -406,7 +497,7 @@ public class Importer {
 		Expression defaultValue = formalParameter.getDefaultValue();
 		
 		if (inferredTypeBinding != null) {
-			possibleTypes.add(ensureTypeFromTypeBinding(inferredTypeBinding));
+			possibleTypes.add(protectedEnsureTypeFromTypeBinding(inferredTypeBinding));
 		}
 		if (declatedType != null) {
 			ITypeBinding resolvedTypeBinding = declatedType.resolveTypeBinding();
@@ -465,41 +556,12 @@ public class Importer {
 		return attribute;
 	}
 	
-	public Attribute ensureAttributeForVariableBinding(IVariableBinding variableBinding) {
-		String name = variableBinding.getName();
-		ITypeBinding parentTypeBinding = variableBinding.getDeclaringClass();
-		Type parentType;
-		if (parentTypeBinding == null)
-			parentType = unknownType();
-		else 
-			parentType = ensureTypeFromTypeBinding(parentTypeBinding);
-		
-		String qualifiedName = variableBinding.getKey();
-		if (attributes.has(qualifiedName)) 
-			return attributes.named(qualifiedName);
-		
-		Type attributeType;
-		if (variableBinding.getType() != null)  { 
-			attributeType = ensureTypeFromTypeBinding(variableBinding.getType()) ;
-		} else  {
-			attributeType = unknownType();
-		}
-		Attribute attribute = ensureBasicAttribute(parentType, name, qualifiedName, attributeType);
-		
-//		Andrei: I moved this here from the visitor method.
-//		extractBasicModifiersFromBinding(variableBinding.getModifiers(), attribute);
-//		if (PHPFlags.isStatic(variableBinding.getModifiers()))
-//			attribute.setHasClassScope(true);
-		
-		//createAnnotationInstancesToEntityFromAnnotationBinding(attribute, variableBinding.getAnnotations());
-		return attribute;
-	}
-	
 	public Attribute ensureAttributeFromFieldDeclarationIntoParentType(SingleFieldDeclaration fieldDeclaration, boolean forceDeclaredType) {
 		Type parentType = this.topFromContainerStack(Type.class);
 		String name = getNameFromExpression(fieldDeclaration.getName());
 		String qualifiedName = entitiesToKeys.get(parentType)+"^"+name;
 		Attribute attribute;
+		
 		if (attributes.has(qualifiedName)) {
 			attribute = attributes.named(qualifiedName);
 			if (forceDeclaredType == false) {
@@ -525,6 +587,35 @@ public class Importer {
 		}
 		attribute.setDeclaredType(declaredType); 
 		
+		return attribute;
+	}
+	
+	/**
+	 * 
+	 * @param variableBinding Must not be null.
+	 * 
+	 * @return the Famix attribute associated to the given variable binding.
+	 */
+	private Attribute ensureAttributeForVariableBinding(IVariableBinding variableBinding) {
+		String name = variableBinding.getName();
+		ITypeBinding parentTypeBinding = variableBinding.getDeclaringClass();
+		Type parentType;
+		if (parentTypeBinding == null)
+			parentType = unknownType();
+		else 
+			parentType = ensureTypeFromTypeBinding(parentTypeBinding);
+		
+		String qualifiedName = variableBinding.getKey();
+		if (attributes.has(qualifiedName)) 
+			return attributes.named(qualifiedName);
+		
+		Type attributeType;
+		if (variableBinding.getType() != null)  { 
+			attributeType = ensureTypeFromTypeBinding(variableBinding.getType()) ;
+		} else  {
+			attributeType = unknownType();
+		}
+		Attribute attribute = ensureBasicAttribute(parentType, name, qualifiedName, attributeType);
 		return attribute;
 	}
 	
@@ -576,6 +667,62 @@ public class Importer {
 		return null;
 	}
 	
+	// ACCESSES
+	
+	public Access createAccessFromFieldAccessNode(FieldAccess fieldAccess) {
+		ITypeBinding fieldTypeBinding = fieldAccess.getDispatcher().resolveTypeBinding();
+		IVariableBinding variableBinding; 
+		
+		// Only continue if the type binding of the field is valid.
+		if (isValidTypeBinding(fieldTypeBinding) == false) {
+			return new Access();
+		}
+		
+		variableBinding = fieldAccess.resolveFieldBinding();
+		if (variableBinding != null) {
+			return createAccessFromVariableBinding(variableBinding);
+		} else {
+			return new Access();
+			// It happens! -> take into account
+			// throw new RuntimeException("Let's see if this happens");
+		}
+	}
+	
+	private Access createAccessFromVariableBinding(IVariableBinding variableBinding) {
+		Access access = new Access();
+		StructuralEntity variable = unknownVariable();
+		
+		boolean isField = variableBinding.isField();
+		boolean isParameter = isVariableMethodParameter(variableBinding);
+		if (!isField && !isParameter)
+			//we only consider fields and parameters ?
+			return access;
+		if (isField) 
+			variable = ensureAttributeForVariableBinding(variableBinding);
+		else if (isParameter)
+			variable = ensureParameterWithinCurrentMethodFromVariableBinding(variableBinding);
+		
+		access.setVariable(variable);
+		access.setIsWrite(false);
+	
+		// Remove this after handling direct accesses outside of methods
+		if (topOfContainerStack() instanceof Method)
+			access.setAccessor((Method) topOfContainerStack());
+	
+		repository.add(access);
+		
+		return access;
+	}
+	
+	public UnknownVariable unknownVariable() {
+		if (unknownVariable == null) {
+			unknownVariable = new UnknownVariable();
+			repository.add(unknownVariable);
+		}
+		return unknownVariable;
+	}
+	
+	
 	/**
 	 * I try to detect if the given variable binding is a method parameter.
 	 * I am needed as org.eclipse.php.core.ast.node.VariableBinding#isParameter() just returns false.
@@ -601,57 +748,6 @@ public class Importer {
 			return false;
 		}
 	}
-	
-	/**
-	 * This is the type we used as a null object whenever we need to reference a type  
-	 */
-	public Type unknownType() {
-		if (unknownType == null) {
-			unknownType = ensureTypeNamedInUnknownNamespace(UNKNOWN_NAME);
-		}
-		return unknownType;
-	}
-	
-	
-	public Type ensureTypeNamedInUnknownNamespace(String name) {
-		Type type = createTypeNamedInUnknownNamespace(name);
-		String qualifiedName = Famix.qualifiedNameOf(type); //TODO: this uses the java qualified like name
-		if (types.has(qualifiedName))
-			return types.named(qualifiedName);
-		else {
-			types.add(Famix.qualifiedNameOf(type), type);
-			return type;
-		}
-	}
-
-	public Type createTypeNamedInUnknownNamespace(String name) {
-		Type type = new Type();
-		type.setName(name);
-		type.setContainer(unknownNamespace());
-		type.setIsStub(true);
-		return type;
-	}
-	
-	public Namespace unknownNamespace() {
-		if (unknownNamespace == null) {
-			unknownNamespace = new Namespace();
-			unknownNamespace.setName(UNKNOWN_NAME);
-			unknownNamespace.setIsStub(true);
-			namespaces.add(Famix.qualifiedNameOf(unknownNamespace), unknownNamespace); //TODO: this uses the java qualified like name
-		}
-		return unknownNamespace;
-	}
-	
-	public Namespace systemNamespace() {
-		if (systemNamespace == null) {
-			systemNamespace = new Namespace();
-			systemNamespace.setName(SYSTEM_NAMESPACE_NAME);
-			systemNamespace.setIsStub(true);
-			namespaces.add(Famix.qualifiedNameOf(systemNamespace), systemNamespace); //TODO: this uses the java qualified like name
-		}
-		return systemNamespace;
-	}
-	
 	
 	private void extractBasicModifiersFromBinding(int modifiers, NamedEntity entity) {
 		if (PHPFlags.isPublic(modifiers) || PHPFlags.isDefault(modifiers)) {
@@ -684,39 +780,6 @@ public class Importer {
 			return (variable.isDollared() ? "$" : "") + variableName.getName();
 		}
 		throw new IllegalStateException();
-	}
-	
-	private ContainerEntity ensureContainerEntityForTypeBinding(ITypeBinding binding) {
-		IMember declaringType;
-		
-		if (binding.getPHPElement() == null) {
-			// If the PHP element is nill but we have a primitive type we use the system namespace as the container.
-			if (binding.isPrimitive() || binding.isNullType() || binding.isArray()) {
-				return systemNamespace();
-			}
-			throw new RuntimeException("Update the detection of the parent");
-		}
-		
-		declaringType = ((IMember)binding.getPHPElement()).getDeclaringType();
-		
-		binding.getEvaluatedType().getTypeName();
-		binding.getPHPElement().getParent().getHandleIdentifier();
-		
-		if (declaringType != null) {
-			boolean isNamespace = false;
-			try {
-				isNamespace = PHPFlags.isNamespace(declaringType.getFlags());
-			} catch (ModelException e) {
-				e.printStackTrace();
-			}
-			if (isNamespace) {
-				return ensureNamespaceNamed(declaringType.getElementName());
-			}
-		} else {
-			return ensureNamespaceNamed(DEFAULT_NAMESPACE_NAME);
-		}
-		
-		throw new RuntimeException("Update the detection of the parent");
 	}
 	
 	//SOURCE ANCHOR
@@ -845,6 +908,5 @@ public class Importer {
 	public String pathWithoutIgnoredRootPath(String originalPath) { 
 		return originalPath.replaceAll("\\\\", "/").replaceFirst("^"+ignoredRootPath+"/", "");
 	}
-	
 
 }

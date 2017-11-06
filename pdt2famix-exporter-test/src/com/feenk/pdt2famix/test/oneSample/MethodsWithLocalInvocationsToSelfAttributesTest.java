@@ -23,7 +23,7 @@ public class MethodsWithLocalInvocationsToSelfAttributesTest extends OneSampleTe
 		assertEquals(1, importer.types().size());
 		assertEquals(8, importer.methods().size());
 		assertEquals(7, importer.currentInvocations().size());
-		assertEquals(0 /*7*/, importer.currentAccesses().size());
+		assertEquals(7, importer.currentAccesses().size());
 		assertEquals(6, importer.attributes().size());
 	}
 		

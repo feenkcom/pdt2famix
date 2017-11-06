@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IFolder;
@@ -30,6 +31,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 
 import com.feenk.pdt2famix.Importer;
+import com.feenk.pdt2famix.model.famix.Access;
 import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.BehaviouralEntity;
 import com.feenk.pdt2famix.model.famix.Inheritance;
@@ -38,6 +40,7 @@ import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.NamedEntity;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Parameter;
+import com.feenk.pdt2famix.model.famix.StructuralEntity;
 import com.feenk.pdt2famix.model.famix.Trait;
 import com.feenk.pdt2famix.model.famix.Type;
 
@@ -228,29 +231,85 @@ public abstract class InPhpTestCase {
 	
 	// ASSERTIONS INVOCATIONS
 	
-	protected void assertInvocationsBetweenMethods(BehaviouralEntity sender, BehaviouralEntity candidate, int numberOfInvocations, NamedEntity receiver) {
+	protected void assertInvocationsBetweenMethodsMatching(BehaviouralEntity sender, BehaviouralEntity candidate, int numberOfInvocations, 
+			Predicate<Invocation> predicate) {
 		List<Invocation> outgoingInvocations =  sender.getOutgoingInvocations().stream()
 			.filter(invocation -> invocation.getCandidates().contains(candidate))
+			.filter(predicate)
 			.collect(Collectors.toList());
 		assertEquals(numberOfInvocations, outgoingInvocations.size());
 		List<Invocation> incomingInvocations = candidate.getIncomingInvocations().stream()
 			.filter(invocation -> invocation.getSender().equals(sender))
+			.filter(predicate)
 			.collect(Collectors.toList());
 		assertEquals(new HashSet<>(Arrays.asList(outgoingInvocations)), new HashSet<>(Arrays.asList(incomingInvocations)));
 		outgoingInvocations.stream().forEach(
-			invocation -> assertInvocationProperties(invocation, sender, candidate, receiver));
+			invocation -> assertInvocationProperties(invocation, sender, candidate));
+	}
+	
+	protected void assertInvocationsBetweenMethods(BehaviouralEntity sender, BehaviouralEntity candidate, int numberOfInvocations, 
+			NamedEntity receiver) {
+		assertInvocationsBetweenMethodsMatching(sender, candidate, numberOfInvocations, 
+				invocation -> receiver == null ? invocation.getReceiver() == null :  invocation.getReceiver().equals(receiver) );
 	}
 
 	protected void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity candidate, NamedEntity receiver) {
 		assertInvocationProperties(invocation, sender, new BehaviouralEntity[] {candidate}, receiver);	
 	}
+	
+	private void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity candidate) {
+		assertEquals(sender, invocation.getSender());
+		assertEquals(new HashSet<>(Arrays.asList(new BehaviouralEntity[] {candidate})), new HashSet<>(invocation.getCandidates()));
+	}
 
-	protected void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity[] candidates, NamedEntity receiver) {
+	private void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity[] candidates, NamedEntity receiver) {
+		assertEquals(sender, invocation.getSender());
 		assertEquals(candidates.length, invocation.getCandidates().size());
 		assertEquals(receiver, invocation.getReceiver());
 		assertEquals(new HashSet<>(Arrays.asList(candidates)), new HashSet<>(invocation.getCandidates()));
 	}
 
+
+	// ASSERTIONS ACCESSES
+	
+	protected void assertAccess(BehaviouralEntity accessorEntity, StructuralEntity accessedAttribute, boolean isWrite) {
+		assertAccess(accessorEntity, accessedAttribute, 1, Optional.of(isWrite));
+	}
+	
+	protected void assertAccess(BehaviouralEntity accessorEntity, StructuralEntity accessedAttribute, int accessCount) {
+		assertAccess(accessorEntity, accessedAttribute, accessCount, Optional.empty());
+	}
+	
+	protected void assertAccess(BehaviouralEntity accessorEntity, StructuralEntity accessedVariable, int accessCount, Optional<Boolean> isWrite) {
+		List<Access> outgoingAccesses = accessorEntity.getAccesses().stream()
+				.filter(access -> access.getVariable().equals(accessedVariable)).collect(Collectors.toList());
+		assertEquals(accessCount, outgoingAccesses.size());
+		List<Access> incomingAccesses = accessedVariable.getIncomingAccesses().stream()
+				.filter(access -> access.getAccessor().equals(accessorEntity)).collect(Collectors.toList());
+		assertEquals(new HashSet<>(Arrays.asList(outgoingAccesses)), new HashSet<>(Arrays.asList(incomingAccesses)));
+		outgoingAccesses.stream().forEach( targetAccess ->
+				assertAccessProperties(targetAccess, accessorEntity, accessedVariable, isWrite));
+		
+	}
+	
+	protected void assertAccessMatching(BehaviouralEntity accessorEntity, StructuralEntity accessedAttribute, Predicate<Access> predicate) {
+		List<Access> possibleAccesses = accessorEntity.getAccesses().stream()
+				.filter(access -> access.getVariable().equals(accessedAttribute))
+				.filter(predicate)
+				.collect(Collectors.toList());
+		assertEquals(1, possibleAccesses.size());
+		assertAccessProperties(possibleAccesses.get(0), accessorEntity, accessedAttribute, Optional.empty());
+	}
+
+	protected void assertAccessProperties(Access access, BehaviouralEntity accessorEntity, StructuralEntity accessedVariable, Optional<Boolean> isWrite) {
+		assertEquals(access.getAccessor(), accessorEntity);
+		assertEquals(access.getVariable(), accessedVariable);
+		if (isWrite.isPresent()) {
+			assertEquals(isWrite.get(), access.getIsWrite());
+		}
+		
+	}
+	
 	// UTILS MODEL ACCESSING
 	
 	protected Method methodInType(Type type, String methodName) {
