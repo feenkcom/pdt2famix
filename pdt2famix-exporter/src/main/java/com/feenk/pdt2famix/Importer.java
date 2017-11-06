@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -106,6 +107,9 @@ public class Importer {
 	private NamedEntityAccumulator<Attribute> attributes;
 	public NamedEntityAccumulator<Attribute> attributes() {return attributes;}
 	
+	private NamedEntityAccumulator<Parameter> parameters;
+	public NamedEntityAccumulator<Parameter> parameters() {return parameters;}
+	
 	private ISourceModule currentSourceModel;
 	public ISourceModule getCurrentSourceModel() {return currentSourceModel;}
 	public void setCurrentSourceModel(ISourceModule currentSourceModel) {this.currentSourceModel = currentSourceModel;}
@@ -167,6 +171,7 @@ public class Importer {
 		types = new NamedEntityAccumulator<Type>(repository);
 		methods = new NamedEntityAccumulator<Method>(repository);
 		attributes = new NamedEntityAccumulator<Attribute>(repository);
+		parameters = new NamedEntityAccumulator<Parameter>(repository);
 		
 		scriptProject = projectPHP; 
 	}
@@ -205,10 +210,26 @@ public class Importer {
 	
 	// TYPE
 	
+	private Type protectedEnsureTypeFromTypeBinding(ITypeBinding binding) {
+		if (binding == null) {
+			return unknownType();
+		}
+		if ((binding.getPHPElement() != null && binding.getPHPElement() == currentSourceModel)) {
+			return unknownType();
+		}
+		
+		return ensureTypeFromTypeBinding(binding);
+	}
+	
 	public Type ensureTypeFromTypeBinding(ITypeBinding binding) {
-		String qualifiedName = getQualifiedNameForBinding(binding); 
-		binding.getKey();
-		binding.getPHPElement();
+		// The implementation of #isUnknown is broken in the binging. 
+		// It should be an unknown binding also if the associated array 
+		// of elements has size 0 (now only if it's null)
+		if (binding.isUnknown() || (binding.getPHPElements().length == 0 && !(binding.isPrimitive() || binding.isNullType() || binding.isArray())) ) {
+			return unknownType();
+		} 
+		
+		String qualifiedName = getQualifiedNameForTypeBinding(binding); 
 		if (qualifiedName == null) {
 			return unknownType();
 			//throw new RuntimeException("Handle the case of unknown types");
@@ -319,6 +340,7 @@ public class Importer {
 		String methodName = methodBinding.getName();
 		return ensureBasicMethod(
 				methodName,  
+				methodBinding.getKey(),
 				parentType,
 				famixMethod -> setUpMethodFromMethodBinding(famixMethod, methodBinding));
 	}
@@ -326,6 +348,7 @@ public class Importer {
 	private void setUpMethodFromMethodBinding(Method method, IMethodBinding binding) {
 		if (binding.isConstructor()) 
 			method.setKind(CONSTRUCTOR_KIND);
+		
 		ITypeBinding[] returnTypes = binding.getReturnType();
 		
 //		if ((returnType != null) && !(returnType.isPrimitive() && returnType.getName().equals("void")))
@@ -347,8 +370,8 @@ public class Importer {
 //		}
 	}
 	
-	public Method ensureBasicMethod(String methodName, Type parentType, Consumer<Method> ifAbsent) {
-		String qualifiedName = makeQualifiedNameFrom(qualifiedFAMIXNameOf(parentType), methodName);
+	public Method ensureBasicMethod(String methodName, String identifierKey, Type parentType, Consumer<Method> ifAbsent) {
+		String qualifiedName = identifierKey;
 		if(methods.has(qualifiedName))
 			return methods.named(qualifiedName);
 		Method method = new Method();
@@ -362,40 +385,53 @@ public class Importer {
 	}
 	
 	// PARAMETERS 
-	
-	//PARAMETER
-	
-	public Parameter parameterFromFormalParameterDeclaration(FormalParameter formalParameter, Method famixMethod) {
-		String name = getNameFromExpression(formalParameter.getParameterName());
 		
+	public Parameter parameterFromFormalParameterDeclaration(FormalParameter formalParameter, Method famixMethod, String methodIdentifier) {
+		String name = getNameFromExpression(formalParameter.getParameterName());
+	
+		// TODO: check to see how to properly define this.
+		String qualifiedName = methodIdentifier + "~~~~" + name;
+		
+		if (parameters.has(qualifiedName)) 
+			return parameters.named(qualifiedName);
 		Parameter parameter = new Parameter();
+		parameters.add(qualifiedName, parameter);
+		
 		parameter.setName(name);
 		parameter.setParentBehaviouralEntity(famixMethod);
 		
-		Type parameterType = null;
+		List<Type> possibleTypes = new ArrayList<Type>();
+		ITypeBinding inferredTypeBinding = formalParameter.getParameterNameIdentifier().resolveTypeBinding();
 		Expression declatedType = formalParameter.getParameterType();
 		Expression defaultValue = formalParameter.getDefaultValue();
 		
+		if (inferredTypeBinding != null) {
+			possibleTypes.add(ensureTypeFromTypeBinding(inferredTypeBinding));
+		}
 		if (declatedType != null) {
 			ITypeBinding resolvedTypeBinding = declatedType.resolveTypeBinding();
 			if (resolvedTypeBinding != null) {
-				parameterType = ensureTypeFromTypeBinding(resolvedTypeBinding);
-			}
+				possibleTypes.add(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding));
+			}	
 		}
 		if (defaultValue != null) {
 			ITypeBinding resolvedTypeBinding = defaultValue.resolveTypeBinding();
-			Type defaultValueType = null;
 			if (resolvedTypeBinding != null) {
-				defaultValueType = ensureTypeFromTypeBinding(resolvedTypeBinding);
-			}
-			if (parameterType == null) {
-				parameterType = defaultValueType;
+				possibleTypes.add(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding));
 			}
 		}
 		
-		parameter.setDeclaredType(parameterType);
-
+		Optional<Type> parameterType = possibleTypes.stream().sequential()
+			.filter(aType -> aType != null && isUnknowFAMIXType(aType) == false )
+			.findFirst();
+		if (parameterType.isPresent()) {
+			parameter.setDeclaredType(parameterType.get());
+		}
 		return parameter;
+	}
+	
+	private boolean isUnknowFAMIXType(Type type) {
+		return unknownType != null && type == unknownType;
 	}
 	
 	public Parameter ensureParameterWithinCurrentMethodFromVariableBinding(IVariableBinding binding) {
@@ -416,7 +452,7 @@ public class Importer {
 		Attribute attribute;
 		
 		if (variableBinding == null) {
-			attribute = ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration);
+			attribute = ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration, false);
 		}
 		else {
 			attribute = ensureAttributeForVariableBinding(variableBinding);
@@ -441,6 +477,7 @@ public class Importer {
 		String qualifiedName = variableBinding.getKey();
 		if (attributes.has(qualifiedName)) 
 			return attributes.named(qualifiedName);
+		
 		Type attributeType;
 		if (variableBinding.getType() != null)  { 
 			attributeType = ensureTypeFromTypeBinding(variableBinding.getType()) ;
@@ -458,12 +495,20 @@ public class Importer {
 		return attribute;
 	}
 	
-	public Attribute ensureAttributeFromFieldDeclarationIntoParentType(SingleFieldDeclaration fieldDeclaration) {
+	public Attribute ensureAttributeFromFieldDeclarationIntoParentType(SingleFieldDeclaration fieldDeclaration, boolean forceDeclaredType) {
 		Type parentType = this.topFromContainerStack(Type.class);
 		String name = getNameFromExpression(fieldDeclaration.getName());
 		String qualifiedName = entitiesToKeys.get(parentType)+"^"+name;
-		if (attributes.has(qualifiedName)) 
-			return attributes.named(qualifiedName);
+		Attribute attribute;
+		if (attributes.has(qualifiedName)) {
+			attribute = attributes.named(qualifiedName);
+			if (forceDeclaredType == false) {
+				return attribute;
+			}
+		} else {
+			attribute = ensureBasicAttribute(parentType, name, qualifiedName, null);
+		}
+		
 		Type declaredType = null;
 		if (fieldDeclaration.getValue() != null) {
 			Expression value = fieldDeclaration.getValue();
@@ -478,7 +523,8 @@ public class Importer {
 				declaredType = ensureTypeFromTypeBinding(fieldDeclaration.getValue().resolveTypeBinding());
 			}
 		}
-		Attribute attribute = ensureBasicAttribute(parentType, name, qualifiedName, declaredType);
+		attribute.setDeclaredType(declaredType); 
+		
 		return attribute;
 	}
 	
@@ -557,24 +603,6 @@ public class Importer {
 	}
 	
 	/**
-	 * All types should be ensured first via this method.
-	 * We first check to see if the binding is resolvable (not null)
-	 * If it is not null we ensure the type from the binding (the happy case)
-	 * If the type is null we recover what we know (for example, the name of a simple type)
-	 * In the worst case we return the {@link #unknownType()} 
-	 */
-//	private Type ensureTypeFromDomType(org.eclipse.jdt.core.dom.Type domType) {
-//		ITypeBinding binding = domType.resolveBinding();
-//		if (binding != null)
-//			return ensureTypeFromTypeBinding(binding);
-//		if (domType.isSimpleType())
-//			return ensureTypeNamedInUnknownNamespace(((SimpleType) domType).getName().toString());
-//		if (domType.isParameterizedType())
-//			return ensureTypeNamedInUnknownNamespace(((org.eclipse.jdt.core.dom.ParameterizedType) domType).getType().toString());
-//		return unknownType();
-//	}
-	
-	/**
 	 * This is the type we used as a null object whenever we need to reference a type  
 	 */
 	public Type unknownType() {
@@ -641,32 +669,6 @@ public class Importer {
 		if (PHPFlags.isFinal(modifiers)) {
 			entity.addModifiers("final"); //$NON-NLS-1$
 		}
-		
-//		Boolean publicModifier = Modifier.isPublic(modifiers);
-//		Boolean protectedModifier = Modifier.isProtected(modifiers);
-//		Boolean privateModifier = Modifier.isPrivate(modifiers);
-//		if (publicModifier )
-//			entity.addModifiers("public");
-//		if (protectedModifier)
-//			entity.addModifiers("protected");
-//		if (privateModifier)
-//			entity.addModifiers("private");
-//		if (!(publicModifier || protectedModifier || privateModifier))
-//			entity.addModifiers("package");
-//		if (Modifier.isFinal(modifiers))
-//			entity.addModifiers("final");
-//		if (Modifier.isAbstract(modifiers))
-//			entity.addModifiers("abstract");
-//		if (Modifier.isNative(modifiers))
-//			entity.addModifiers("native");
-//		if (Modifier.isSynchronized(modifiers))
-//			entity.addModifiers("synchronized");
-//		if (Modifier.isTransient(modifiers))
-//			entity.addModifiers("transient");
-//		if (Modifier.isVolatile(modifiers))
-//			entity.addModifiers("volatile");
-		/*	We do not extract the static modifier here because we want to set the hasClassScope property
-			and we do that specifically only for attributes and methods */  
 	}
 	
 	private String getNameFromExpression(Expression expression) {
@@ -731,9 +733,9 @@ public class Importer {
 	/**
 	 * I return the qualified name of an entity as computed by PDT.
 	 */
-	public String getQualifiedNameForBinding(ITypeBinding binding) {
+	public String getQualifiedNameForTypeBinding(ITypeBinding binding) {
+		
 		String qualifiedName = binding.getKey();
-		binding.isAmbiguous();
 		if (qualifiedName == null) {
 			// We handle the cases when PDT does not generate a key differenty.
 			// For primitive types we just use the name of the type.
@@ -753,46 +755,11 @@ public class Importer {
 		return qualifiedName;
 	}
 	
-	/**
-	 * This is a method that manually tries to compute the qualified name for a binding 
-	 * based on the current stack of containers. This is used to ensure that the qualified
-	 * names generated by IType#getFullyQualifiedName() are as expected.
-	 */
-	public String computeQualifiedNameForBinding(ITypeBinding binding) {
-		String qualifiedContainerName = qualifiedFAMIXNameOf(topOfContainerStackOrDefaultNamespace());
-		return makeQualifiedNameFrom(qualifiedContainerName, binding.getName());
-	}
 	
-	public String makeQualifiedNameFrom(String containerQualifiedName, String entityName) {
+	public String makeTypeQualifiedNameFrom(String containerQualifiedName, String entityName) {
 		return containerQualifiedName.isEmpty() ? entityName : containerQualifiedName + NAME_SEPARATOR + entityName ;
 	}
 	
-	public String qualifiedFAMIXNameOf(ContainerEntity containerEntity) {	
-		if (containerEntity instanceof Type)
-			return qualifiedFAMIXNameOf((Type) containerEntity);
-		if (containerEntity instanceof ScopingEntity)
-			return qualifiedFAMIXNameOf((ScopingEntity) containerEntity);
-		if (containerEntity instanceof Method)
-			return qualifiedFAMIXNameOf((Method) containerEntity);
-	
-		throw new RuntimeException("TODO: "+containerEntity.getName());
-	}
-	
-	public String qualifiedNameOf(Method method) {
-		return makeQualifiedNameFrom(qualifiedFAMIXNameOf(method.getParentType()), method.getName());
-	}
-	
-	public String qualifiedFAMIXNameOf(Type type) {	
-		if (type.getContainer() instanceof Type)
-			return qualifiedFAMIXNameOf((Type) type.getContainer()) + NAME_SEPARATOR + type.getName();
-		return makeQualifiedNameFrom(qualifiedFAMIXNameOf((ScopingEntity) type.getContainer()), type.getName());
-	}
-	
-	public String qualifiedFAMIXNameOf(ScopingEntity container) {
-		if (container.getParentScope() != null)
-			return qualifiedFAMIXNameOf(container.getParentScope()) + NAMESPACE_SEPARATOR + container.getName();
-		return container.getName();
-	}
 	
 	public String entityBasenameFrom(String qualifiedEntityName) {
 		int lastIndexOfSeparator = qualifiedEntityName.lastIndexOf(NAME_SEPARATOR);

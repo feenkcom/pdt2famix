@@ -11,7 +11,7 @@ public class TraitInExplicitNamespaceTest extends OneSampleTestCase {
 	private static final String TRAIT_NAME = removeTestSuffix(TraitInExplicitNamespaceTest.class.getSimpleName());
 	
 	protected String sample() {
-		return importer.makeQualifiedNameFrom(NAMESPACE_NAME, TRAIT_NAME);
+		return importer.makeTypeQualifiedNameFrom(NAMESPACE_NAME, TRAIT_NAME);
 	}
 	
 	@Test

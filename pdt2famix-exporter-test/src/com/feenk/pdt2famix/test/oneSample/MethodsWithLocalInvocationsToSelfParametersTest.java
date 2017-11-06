@@ -25,6 +25,7 @@ public class MethodsWithLocalInvocationsToSelfParametersTest extends OneSampleTe
 		assertEquals(5, importer.currentInvocations().size());
 		assertEquals(0, importer.currentAccesses().size());
 		assertEquals(0, importer.attributes().size());
+		assertEquals(5, importer.parameters().size());
 	}
 	
 	@Test
@@ -32,6 +33,9 @@ public class MethodsWithLocalInvocationsToSelfParametersTest extends OneSampleTe
 		Method main1 = methodNamed("main1");
 		Method helper1 = methodNamed("helper1");
 		Method helper2 = methodNamed("helper2");
+		
+		assertMethodParameter("$param1", main1, type);
+		assertMethodParameter("$param2", main1, type);
 		
 		assertEquals(0, main1.getIncomingInvocations().size());
 		assertEquals(2, main1.getOutgoingInvocations().size());
@@ -50,6 +54,9 @@ public class MethodsWithLocalInvocationsToSelfParametersTest extends OneSampleTe
 		Method helper2 = methodNamed("helper2");
 		Parameter parameter1 = parameterInBehaviour(main2, "$param1");
 		Parameter parameter2 = parameterInBehaviour(main2, "$param2");
+		
+		assertMethodParameter("$param1", main2, type);
+		assertMethodParameter("$param2", main2, type);
 		
 		assertEquals(0, main2.getIncomingInvocations().size());
 		assertEquals(2, main2.getOutgoingInvocations().size());
@@ -70,6 +77,8 @@ public class MethodsWithLocalInvocationsToSelfParametersTest extends OneSampleTe
 	@Test
 	public void testMainRecursionInvocations() {
 		Method mainRecursion = methodNamed("mainRecursion");
+		
+		assertMethodParameter("$param", mainRecursion, type);
 		
 		assertEquals(1, mainRecursion.getIncomingInvocations().size());
 		assertEquals(1, mainRecursion.getOutgoingInvocations().size());

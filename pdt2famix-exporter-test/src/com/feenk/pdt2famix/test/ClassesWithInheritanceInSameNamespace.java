@@ -42,8 +42,8 @@ public class ClassesWithInheritanceInSameNamespace extends InPhpTestCase {
 		assertEquals(1, subSubClass.getSuperInheritances().size());
 		assertEquals(0, subSubClass.getSubInheritances().size());
 		
-		assertSingleInheritance(subClass, rootSuperclass);
-		assertSingleInheritance(subSubClass, subClass);
+		assertInheritance(subClass, rootSuperclass);
+		assertInheritance(subSubClass, subClass);
 	}
 	
 }

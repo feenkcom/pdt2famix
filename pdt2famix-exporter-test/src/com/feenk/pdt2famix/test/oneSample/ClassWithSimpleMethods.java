@@ -16,14 +16,20 @@ public class ClassWithSimpleMethods extends OneSampleTestCase {
 	
 	@Test
 	public void testModelSize() {
-		assertEquals(2, importer.namespaces().size());
-		assertEquals(2, importer.types().size());
+		assertEquals(2 + 1, importer.namespaces().size());  // Account for generate unknown namespace
+		assertEquals(2 + 1, importer.types().size());       // Account for generate unknown type
 		assertEquals(4, importer.methods().size());
 	}
 	
 	@Test
+	public void testUnknownEntities() {
+		assertUnknownNamespacePresent();
+		assertUnknownTypePresent();
+	}
+	
+	@Test
 	public void testNamespace() {	
-		assertNamespacesPresent(Importer.DEFAULT_NAMESPACE_NAME, Importer.SYSTEM_NAMESPACE_NAME);
+		assertNamespacesPresent(Importer.DEFAULT_NAMESPACE_NAME, Importer.SYSTEM_NAMESPACE_NAME, Importer.UNKNOWN_NAME);
 		assertNamespaceTypes(Importer.DEFAULT_NAMESPACE_NAME, type);
 	}
 	

@@ -151,11 +151,7 @@ public class AstVisitor extends AbstractVisitor {
 		ITypeBinding declatingClass  = methodBinding.getDeclaringClass();
 		ITypeBinding[] returnType    = methodBinding.getReturnType();
 				
-		IModelElement modelElement = methodBinding.getPHPElement();
-		logger.trace(((IMethod)modelElement).getFullyQualifiedName());
-		logger.trace(methodBinding.getKey()); 
-		
-		
+		IModelElement modelElement = methodBinding.getPHPElement();		
 		Method famixMethod;
 		if (methodBinding != null) {
 			famixMethod = importer.ensureMethodFromMethodBindingToCurrentContainer(methodBinding);
@@ -169,14 +165,9 @@ public class AstVisitor extends AbstractVisitor {
 		importer.pushOnContainerStack(famixMethod);
 		
 		for (FormalParameter parameter: methodDeclarationNode.getFunction().formalParameters()) {
-			importer	.parameterFromFormalParameterDeclaration(parameter, famixMethod);
+			importer	.parameterFromFormalParameterDeclaration(parameter, famixMethod, methodBinding.getKey());
 		}
 		
-	
-//		node.parameters().
-//			stream().
-//			forEach(p -> 
-//				importer.ensureParameterFromSingleVariableDeclaration((SingleVariableDeclaration) p, method));
 		importer.createSourceAnchor(famixMethod, methodDeclarationNode);
 //		importer.ensureCommentFromBodyDeclaration(method, node);
 		return true;
@@ -199,7 +190,7 @@ public class AstVisitor extends AbstractVisitor {
 		Attribute attribute;
 		
 		if (variableBinding == null) {
-			attribute = importer.ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration);
+			attribute = importer.ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration, true);
 			// Bindings.findFieldInType(null, fieldDeclaration.getName().toString());
 		}
 		else {
@@ -242,10 +233,12 @@ public class AstVisitor extends AbstractVisitor {
 		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
 //		methodBinding.getParameterTypes();
 //		methodInvocation.getMethod().resolveFunctionBinding();
-		Expression dispatcherExpression = methodInvocation.getDispatcher();
-		Invocation invocation = importer.createInvocationFromMethodBinding(methodInvocation.resolveMethodBinding());
-		if (dispatcherExpression != null) {
-			invocation.setReceiver(importer.ensureStructuralEntityFromExpression(dispatcherExpression));
+		if (methodBinding != null) {
+			Expression dispatcherExpression = methodInvocation.getDispatcher();
+			Invocation invocation = importer.createInvocationFromMethodBinding(methodBinding);
+			if (dispatcherExpression != null) {
+				invocation.setReceiver(importer.ensureStructuralEntityFromExpression(dispatcherExpression));
+			}
 		}
 		//importer.createAccessFromExpression(methodInvocation.getMethod().);
 //		node.arguments().stream().forEach(arg -> importer.createAccessFromExpression((Expression) arg));

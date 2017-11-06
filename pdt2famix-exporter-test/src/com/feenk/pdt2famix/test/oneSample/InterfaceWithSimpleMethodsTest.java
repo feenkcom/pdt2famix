@@ -1,6 +1,8 @@
 package com.feenk.pdt2famix.test.oneSample;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -15,11 +17,17 @@ public class InterfaceWithSimpleMethodsTest extends OneSampleTestCase {
 	
 	@Test
 	public void testModelSize() {
-		assertEquals(2, importer.namespaces().size());
-		assertEquals(2, importer.types().size());
+		assertEquals(2 + 1, importer.namespaces().size());  // Account for generate unknown namespace
+		assertEquals(2 + 1, importer.types().size());       // Account for generate unknown type
 		assertEquals(4, importer.methods().size());
 	}
 	
+	@Test
+	public void testUnknownEntities() {
+		assertUnknownNamespacePresent();
+		assertUnknownTypePresent();
+	}
+
 	@Test
 	public void testInterfaceMethod() {	
 		assertClassMethods(type, "__construct", "foo", "bar", "baz");

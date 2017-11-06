@@ -14,9 +14,15 @@ public class TraitWithSimpleMethods extends OneSampleTestCase {
 	
 	@Test
 	public void testModelSize() {
-		assertEquals(2, importer.namespaces().size());
-		assertEquals(2, importer.types().size());
+		assertEquals(2 + 1, importer.namespaces().size()); // Account for generated unknown namespace
+		assertEquals(2 + 1, importer.types().size());      // Account for generated unknown type
 		assertEquals(4, importer.methods().size());
+	}
+	
+	@Test
+	public void testUnknownEntities() {
+		assertUnknownNamespacePresent();
+		assertUnknownTypePresent();
 	}
 	
 	@Test

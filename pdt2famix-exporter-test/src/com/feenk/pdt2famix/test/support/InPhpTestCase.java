@@ -175,15 +175,6 @@ public abstract class InPhpTestCase {
 	
 	// ASSERTIONS INHERITANCE
 	
-	
-	protected void assertSingleInheritance(Type subclass, Type superclass) {
-		Inheritance superclassSubclassInheritance = superclass.getSubInheritances().stream().findFirst().get();
-		assertEquals(superclass, superclassSubclassInheritance.getSuperclass());
-		assertEquals(subclass, superclassSubclassInheritance.getSubclass());
-		Inheritance subclassSuperclassInheritance = subclass.getSuperInheritances().stream().findFirst().get();
-		assertEquals(superclassSubclassInheritance, subclassSuperclassInheritance);
-	}
-	
 	protected void assertInheritance(Type subclass, Type superclass) {
 		Inheritance superclassSubclassInheritance = superclass.getSubInheritances().stream()
 				.filter( inheritance -> inheritance.getSubclass().equals(subclass) )
@@ -211,7 +202,7 @@ public abstract class InPhpTestCase {
 		assertEquals(method.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
 	}
 	
-	// ASSERTIONS ATTRIBUTES
+	// ASSERTIONS ATTRIBUTES & PARAMETERS
 	
 	protected void assertAttribute(String attributeName, Type parentType, Type declaredType) {
 		Attribute attribute = attributeInType(parentType, attributeName);
@@ -221,6 +212,18 @@ public abstract class InPhpTestCase {
 		assertEquals(declaredType, attribute.getDeclaredType());
 		//assertEquals(attribute.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
 	}
+	
+	protected void assertMethodParameter(String parameterName, BehaviouralEntity parentBehaviour, Type declaredType) {
+		List<Parameter> possibleParameters = parentBehaviour.getParameters().stream()
+				.filter( aParameter -> aParameter.getName().equals(parameterName))
+				.collect(Collectors.toList());
+		assertEquals(1, possibleParameters.size());
+		
+		Parameter targetParameter = possibleParameters.get(0);
+		assertEquals(parentBehaviour, targetParameter.getParentBehaviouralEntity());
+		assertEquals(declaredType, targetParameter.getDeclaredType());
+	}
+
 	
 	
 	// ASSERTIONS INVOCATIONS
@@ -342,7 +345,7 @@ public abstract class InPhpTestCase {
 	
 	protected String typeIdentifier(String namespaceName, String typeName) {
 		String sampleDirectoryName = sampleDirectory();
-		return identifierFor(sampleDirectoryName, sampleDirectoryName, importer.makeQualifiedNameFrom(namespaceName, typeName));
+		return identifierFor(sampleDirectoryName, sampleDirectoryName, importer.makeTypeQualifiedNameFrom(namespaceName, typeName));
 	}
 	
 	/**

@@ -2,15 +2,9 @@ package com.feenk.pdt2famix.test.oneSample;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.junit.Test;
 
-import com.feenk.pdt2famix.model.famix.BehaviouralEntity;
 import com.feenk.pdt2famix.model.famix.Method;
-import com.feenk.pdt2famix.model.famix.Parameter;
-import com.feenk.pdt2famix.model.famix.Type;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class MethodsWithVariousParametersTest extends OneSampleTestCase {
@@ -21,12 +15,19 @@ public class MethodsWithVariousParametersTest extends OneSampleTestCase {
 
 	@Test
 	public void testModelSize() {
-		assertEquals(2, importer.namespaces().size());
-		assertEquals(7, importer.types().size());
+		assertEquals(2 + 1, importer.namespaces().size()); // Account for generated unknown namespace
+		assertEquals(8 + 1, importer.types().size());      // Account for generated unknown type
 		assertEquals(9, importer.methods().size());
 		assertEquals(0, importer.currentInvocations().size());
 		assertEquals(0, importer.currentAccesses().size());
 		assertEquals(0, importer.attributes().size());
+		assertEquals(14, importer.parameters().size());
+	}
+	
+	@Test
+	public void testUnknownEntities() {
+		assertUnknownNamespacePresent();
+		assertUnknownTypePresent();
 	}
 	
 	@Test
@@ -63,7 +64,7 @@ public class MethodsWithVariousParametersTest extends OneSampleTestCase {
 		assertEquals(2, method.getParameters().size());
 		
 		assertMethodParameter("$a", method, numberType());
-		assertMethodParameter("$b", method, booleanType());
+		assertMethodParameter("$b", method, stringType());
 	}
 	
 	@Test
@@ -113,16 +114,4 @@ public class MethodsWithVariousParametersTest extends OneSampleTestCase {
 		
 		assertMethodParameter("$param", method, typeNamed("AnInterfaceForMethodParametersUsage"));
 	}
-	
-	private void assertMethodParameter(String parameterName, BehaviouralEntity parentBehaviour, Type declaredType) {
-		List<Parameter> possibleParameters = parentBehaviour.getParameters().stream()
-				.filter( aParameter -> aParameter.getName().equals(parameterName))
-				.collect(Collectors.toList());
-		assertEquals(1, possibleParameters.size());
-		
-		Parameter targetParameter = possibleParameters.get(0);
-		assertEquals(parentBehaviour, targetParameter.getParentBehaviouralEntity());
-		assertEquals(declaredType, targetParameter.getDeclaredType());
-	}
-
 }

@@ -11,7 +11,7 @@ public class ClassWithinExplicitNamespace extends OneSampleTestCase {
 	private static final String CLASS_NAME = removeTestSuffix(ClassWithinExplicitNamespace.class.getSimpleName());
 	
 	protected String sample() {
-		return importer.makeQualifiedNameFrom(NAMESPACE_NAME, CLASS_NAME);
+		return importer.makeTypeQualifiedNameFrom(NAMESPACE_NAME, CLASS_NAME);
 	}
 	
 	@Test

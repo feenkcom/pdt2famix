@@ -1,7 +1,10 @@
 package com.feenk.pdt2famix.test.support;
 
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Before;
 
+import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Type;
 
 public abstract class OneSampleTestCase extends InPhpTestCase {
@@ -42,5 +45,13 @@ public abstract class OneSampleTestCase extends InPhpTestCase {
 
 	protected void assertAttribute(String attributeName, Type declaredType) {
 		super.assertAttribute(attributeName, type, declaredType);
+	}
+	
+	protected void assertUnknownTypePresent() {
+		assertTrue(importer.namespaces().has(Importer.UNKNOWN_NAME));
+	}
+
+	protected void assertUnknownNamespacePresent() {
+		assertTrue(importer.types().has(Importer.UNKNOWN_NAME + "." + Importer.UNKNOWN_NAME));
 	}
 }

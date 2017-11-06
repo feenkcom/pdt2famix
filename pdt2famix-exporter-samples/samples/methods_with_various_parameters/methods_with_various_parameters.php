@@ -14,7 +14,7 @@ class MethodsWithVariousParameters {
         
     }
     
-    public function methodWithPrimitiveParametersDefaultValue($a = 1, $b = true) {
+    public function methodWithPrimitiveParametersDefaultValue($a = 1, $b = 'abc') {
         
     }
     

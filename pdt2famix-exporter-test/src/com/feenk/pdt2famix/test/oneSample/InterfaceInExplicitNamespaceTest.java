@@ -11,7 +11,7 @@ public class InterfaceInExplicitNamespaceTest extends OneSampleTestCase {
 	private static final String INTERFACE_NAME = removeTestSuffix(InterfaceInExplicitNamespaceTest.class.getSimpleName());
 	
 	protected String sample() {
-		return importer.makeQualifiedNameFrom(NAMESPACE_NAME, INTERFACE_NAME);
+		return importer.makeTypeQualifiedNameFrom(NAMESPACE_NAME, INTERFACE_NAME);
 	}
 	
 	@Test
