@@ -42,6 +42,7 @@ import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Parameter;
 import com.feenk.pdt2famix.model.famix.StructuralEntity;
 import com.feenk.pdt2famix.model.famix.Trait;
+import com.feenk.pdt2famix.model.famix.TraitUsage;
 import com.feenk.pdt2famix.model.famix.Type;
 
 public abstract class InPhpTestCase {
@@ -191,6 +192,23 @@ public abstract class InPhpTestCase {
 				.findAny()
 				.get();
 		assertEquals(superclassSubclassInheritance, subclassSuperclassInheritance);
+	}
+	
+	// ASSERTIONS TRAIT USAGE
+	
+	protected void assertTraitUsage(Type typeUsingTrait, Trait usedTrait) {
+		TraitUsage traitUsageInTrait = usedTrait.getIncomingTraitUsages().stream()
+				.filter( traitUsage -> traitUsage.getUser().equals(typeUsingTrait) )
+				.findAny()
+				.get();
+		assertEquals(typeUsingTrait, traitUsageInTrait.getUser());
+		assertEquals(usedTrait, traitUsageInTrait.getTrait());
+		
+		TraitUsage traitUsageInType = typeUsingTrait.getOutgoingTraitUsages().stream()
+				.filter( traitUsage -> traitUsage.getTrait().equals(usedTrait) )
+				.findAny()
+				.get();
+		assertEquals(traitUsageInType, traitUsageInTrait);
 	}
 	
 	// ASSERTIONS METHODS
