@@ -1,5 +1,6 @@
 package com.feenk.pdt2famix;
 
+import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -20,6 +21,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.dltk.core.IMember;
 import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
@@ -116,7 +119,7 @@ public class Importer {
 	public ISourceModule getCurrentSourceModel() {return currentSourceModel;}
 	public void setCurrentSourceModel(ISourceModule currentSourceModel) {this.currentSourceModel = currentSourceModel;}
 	
-	public String getCurrentFilePath() {return getCurrentSourceModel().getPath().makeAbsolute().toString(); }
+	public String getCurrentFilePath() {return getCurrentSourceModel().getPath().makeRelative().toString(); }
 	
 	public Collection currentInvocations() {
 		return (Collection) repository().getElements().stream()
@@ -232,15 +235,21 @@ public class Importer {
 	
 	// TYPE
 	
-	private Type protectedEnsureTypeFromTypeBinding(ITypeBinding binding) {
+	private Type protectedEnsureTypeFromTypeBinding(ITypeBinding binding, String debugData) {
+		if (binding == null) {
+			logNullBinding("type binding resolving", debugData, 0);
+			return unknownType();
+		}
 		if (isValidTypeBinding(binding) == false) {
+			logInvalidBinding("type binding resolving", debugData);
 			return unknownType();
 		}
 		return ensureTypeFromTypeBinding(binding);
 	}
 	
-	private boolean isValidTypeBinding(ITypeBinding binding) {
+	public boolean isValidTypeBinding(ITypeBinding binding) {
 		if (binding == null) {
+			logNullBinding("type binding resolving", "", 0);
 			return false;
 		}
 		if ((binding.getPHPElement() != null && binding.getPHPElement() == currentSourceModel)) {
@@ -276,7 +285,7 @@ public class Importer {
 		types.add(qualifiedName, famixType);
 		entitiesToKeys.put(famixType, qualifiedName);
 		famixType.setIsStub(true);		
-		binding.getInterfaces();
+		
 		//extractBasicModifiersFromBinding(binding.getModifiers(), type);
 		famixType.setContainer(ensureContainerEntityForTypeBinding(binding));
 		if (binding.getSuperclass() != null) 
@@ -419,6 +428,7 @@ public class Importer {
 			// does not resolve correcly: if we resolve the binding of the type we 
 			// get the current source module.
 			// If we encounter that then we just use the unknown type.
+			logInvalidBinding("Method binding", binding);
 			famixClassType = unknownType();
 		} else {
 			famixClassType = ensureTypeFromTypeBinding(classBinding);
@@ -497,18 +507,18 @@ public class Importer {
 		Expression defaultValue = formalParameter.getDefaultValue();
 		
 		if (inferredTypeBinding != null) {
-			possibleTypes.add(protectedEnsureTypeFromTypeBinding(inferredTypeBinding));
+			possibleTypes.add(protectedEnsureTypeFromTypeBinding(inferredTypeBinding, "Parameter type "+qualifiedName));
 		}
 		if (declatedType != null) {
 			ITypeBinding resolvedTypeBinding = declatedType.resolveTypeBinding();
 			if (resolvedTypeBinding != null) {
-				possibleTypes.add(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding));
+				possibleTypes.add(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding, "Parameter resolved type "+qualifiedName));
 			}	
 		}
 		if (defaultValue != null) {
 			ITypeBinding resolvedTypeBinding = defaultValue.resolveTypeBinding();
 			if (resolvedTypeBinding != null) {
-				possibleTypes.add(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding));
+				possibleTypes.add(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding, "Parameter default type "+qualifiedName));
 			}
 		}
 		
@@ -580,6 +590,7 @@ public class Importer {
 				// does not resolve correcly the type of the value. If we resolve the binding of the type we 
 				// get the current source module.
 				// If we encounter that then we just use the unknown type.
+				logInvalidBinding("Field declaration", fieldDeclaration);
 				declaredType = unknownType();
 			} else {
 				declaredType = ensureTypeFromTypeBinding(fieldDeclaration.getValue().resolveTypeBinding());
@@ -650,7 +661,7 @@ public class Importer {
 			ITypeBinding contaierTypeBinding = ((FieldAccess) expression).getDispatcher().resolveTypeBinding();
 			if ( contaierTypeBinding == null || (contaierTypeBinding.getPHPElement() == this.currentSourceModel)) {
 				// Like in a few other cases the binding here gets resolved to the wrong module.
-				System.out.println();
+				logInvalidBinding("Expression declaration", expression);
 			} else {
 				variableBinding = ((FieldAccess) expression).resolveFieldBinding();
 			}
@@ -860,46 +871,66 @@ public class Importer {
 				" - " + extraData +
 				" - " + getCurrentFilePath() +
 				" - line " + lineNumber);
-	}			
+	}	
+	
+	public void logInvalidBinding(String bindingType, Object extraData) {
+		logger.error("unresolved " + bindingType +
+				" - " + extraData +
+				" - " + getCurrentFilePath());
+	}	
 		
 	
 	// OPENING
 
 	
-	public void run(IScriptProject projectPHP, List<String> allowedPaths) throws Exception{
+	public void run(IScriptProject projectPHP, List<String> allowedPaths, boolean exportAST) throws Exception{
 		AstVisitor visitor = new AstVisitor(this);
 		for (IProjectFragment projectFragment : projectPHP.getProjectFragments()) {
 			logger.trace("IProjectFragment: "+projectFragment.getPath());
 			if (projectFragment.isExternal() == false) {
-				processModelElement(projectFragment, visitor, allowedPaths);
+				processModelElement(projectFragment, visitor, allowedPaths, exportAST);
 			}
 		}
 	}
 	
-	private void processModelElement(IModelElement modelElement, Visitor visitor, List<String> allowedPaths) throws Exception {
+	private void processModelElement(IModelElement modelElement, Visitor visitor, List<String> allowedPaths, boolean exportAST) throws Exception {
 		if (modelElement instanceof ISourceModule) {
-			logger.trace("ISourceModule: "+modelElement.getElementName()+" "+modelElement.getPath().toString());
+			//logger.trace("ISourceModule: "+modelElement.getElementName()+" "+modelElement.getPath().toString());
 			boolean isPresent = allowedPaths.stream()
 				.filter(aPath -> modelElement.getPath().toString().startsWith(aPath))
 				.findAny()
 				.isPresent();
 			if (allowedPaths.isEmpty() || isPresent) {
-				logger.trace("ISourceModule: "+modelElement.getElementName()+" "+modelElement.getPath());
+				//logger.trace("ISourceModule: "+modelElement.getElementName()+" "+modelElement.getPath());
 				setCurrentSourceModel((ISourceModule)modelElement);
 				
 				ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1, ((ISourceModule)modelElement));
 				Program program = parser.createAST(null);
+				if (exportAST) {
+					exportAST(program);
+				}
 				program.accept(visitor);
 			}
 		} else if (modelElement instanceof IParent) {
 			IModelElement[] children = ((IParent)modelElement).getChildren();
 			for (IModelElement childElement: children) {
-				processModelElement(childElement, visitor, allowedPaths);	
+				processModelElement(childElement, visitor, allowedPaths, exportAST);	
 			}
 		}
 		
 	}
 	
+	private void exportAST(Program program) {
+		IPath relativeFilePath = getCurrentSourceModel().getPath().removeFileExtension().addFileExtension("ast");		
+		IPath absoluteFilePath = ResourcesPlugin.getWorkspace().getRoot().getLocation().append(relativeFilePath);
+		
+		try (BufferedWriter output = new BufferedWriter(new FileWriter(absoluteFilePath.toFile()))) {
+			output.write(program.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	/**
 	 * Typically holds the prefix of the path of the root folder in which the importer was triggered.
 	 * It is useful for creating relative paths for the source anchors  

@@ -492,7 +492,7 @@ public abstract class InPhpTestCase {
 		IScriptProject projectPHP = ProjectHolder.getProject(PROJECT_NAME);
 		
 		importer = new Importer(projectPHP);
-		importer.run(projectPHP, Arrays.asList(new String[] {"/" + PROJECT_NAME + "/"+ SAMPLES_NAME +"/" + sampleDirectory()}) );
+		importer.run(projectPHP, Arrays.asList(new String[] {"/" + PROJECT_NAME + "/"+ SAMPLES_NAME +"/" + sampleDirectory()}), false);
 	}
 	
 //	@After

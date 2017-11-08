@@ -7,7 +7,6 @@ import java.util.Optional;
 import org.junit.Test;
 
 import com.feenk.pdt2famix.model.famix.Attribute;
-import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 

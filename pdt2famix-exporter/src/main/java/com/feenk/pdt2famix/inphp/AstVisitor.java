@@ -21,6 +21,7 @@ import org.eclipse.php.core.ast.nodes.MethodInvocation;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
 import org.eclipse.php.core.ast.nodes.TraitDeclaration;
+import org.eclipse.php.core.ast.nodes.TraitUseStatement;
 import org.eclipse.php.core.ast.nodes.TypeDeclaration;
 import org.eclipse.php.core.ast.nodes.Variable;
 import org.eclipse.php.core.ast.visitor.AbstractVisitor;
@@ -46,6 +47,10 @@ public class AstVisitor extends AbstractVisitor {
 		
 	public void logNullBinding(String string, Object extraData, int lineNumber) {
 		importer.logNullBinding(string, extraData, lineNumber);
+	}
+	
+	public void logInvalidBinding(String string, Object extraData) {
+		importer.logInvalidBinding(string, extraData);
 	}
 		
 	@Override
@@ -79,7 +84,6 @@ public class AstVisitor extends AbstractVisitor {
 	
 	@Override
 	public boolean visit(NamespaceDeclaration namespaceDeclaration) {
-		logger.trace("visiting namespace declaration - " + namespaceDeclaration.getName());
 		Namespace namespace = importer.ensureNamespaceFromNamespaceDeclaration(namespaceDeclaration);
 		importer.pushOnContainerStack(namespace);
 		return true;
@@ -94,7 +98,6 @@ public class AstVisitor extends AbstractVisitor {
 	
 	@Override
 	public boolean visit(ClassDeclaration classDeclaration) {
-		logger.trace("visiting class declaration - " + classDeclaration.getName());
 		visitTypeDeclaration(classDeclaration);
 		return true;
 	}
@@ -108,7 +111,6 @@ public class AstVisitor extends AbstractVisitor {
 	
 	@Override
 	public boolean visit(TraitDeclaration traitDeclaration) {
-		logger.trace("visiting trait declaration - " + traitDeclaration.getName());
 		visitTypeDeclaration(traitDeclaration);
 		return true;
 	}
@@ -118,11 +120,15 @@ public class AstVisitor extends AbstractVisitor {
 		importer.popFromContainerStack();
 	}
 	
+//	@Override
+//	public boolean visit(TraitUseStatement node) {
+//		return true;
+//	}
+	
 	// TYPES - INTERFACES
 	
 	@Override
 	public boolean visit(InterfaceDeclaration interfaceDeclaration) {
-		logger.trace("visiting trait declaration - " + interfaceDeclaration.getName());
 		visitTypeDeclaration(interfaceDeclaration);
 		return true;
 	}
@@ -139,6 +145,10 @@ public class AstVisitor extends AbstractVisitor {
 		ITypeBinding binding = typeDeclaration.resolveTypeBinding();
 		if (binding == null) {
 			logNullBinding("type declaration", typeDeclaration.getName(), typeDeclaration.getStart());
+			return ;
+		}
+		if (importer.isValidTypeBinding(binding) == false) {
+			logInvalidBinding("type declaration", typeDeclaration.getName());
 			return ;
 		}
 		
@@ -189,9 +199,7 @@ public class AstVisitor extends AbstractVisitor {
 	// ATTRIBUTES
 	
 	@Override 
-	public boolean visit(SingleFieldDeclaration fieldDeclaration) {
-		logger.trace("visiting single field declaration - " + fieldDeclaration.getName());
-			
+	public boolean visit(SingleFieldDeclaration fieldDeclaration) {			
 		IVariableBinding variableBinding = fieldDeclaration.getName().resolveVariableBinding();
 		Attribute attribute;
 		

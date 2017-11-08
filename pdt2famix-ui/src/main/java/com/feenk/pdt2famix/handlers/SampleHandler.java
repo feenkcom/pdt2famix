@@ -30,7 +30,7 @@ public class SampleHandler extends AbstractHandler {
 		logger.trace("execute ");
 		
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		IProject project = root.getProject("pdt2famix-exporter-samples");
+		IProject project = root.getProject("pdt2famix-exporer-samples");
 		Importer importer;
 		
 		try {
@@ -39,7 +39,7 @@ public class SampleHandler extends AbstractHandler {
 			importer = new Importer(projectPHP);
 			
 			logger.trace("run");
-			importer.run(projectPHP, new ArrayList<>());
+			importer.run(projectPHP, new ArrayList<>(), true);
 			logger.trace("done running");
 		} catch (Exception e) {
 			throw new ExecutionException("Model Generation Error", e);

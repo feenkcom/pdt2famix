@@ -2,11 +2,7 @@
 
 class MethodsWithAccessesToLocalParameters {
     
-	public 	$haba;
-
     public function methodWithSingleAcccesses(bool $a, int $b) {
-		$this->haba;
-		$this->methodWithMultipleAcccesses();
         if ($a) {
 			$b;
 		}
