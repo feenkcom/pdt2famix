@@ -19,6 +19,7 @@ import org.eclipse.php.core.ast.nodes.LambdaFunctionDeclaration;
 import org.eclipse.php.core.ast.nodes.MethodDeclaration;
 import org.eclipse.php.core.ast.nodes.MethodInvocation;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
+import org.eclipse.php.core.ast.nodes.NamespaceName;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
 import org.eclipse.php.core.ast.nodes.TraitDeclaration;
 import org.eclipse.php.core.ast.nodes.TraitUseStatement;
@@ -29,6 +30,7 @@ import org.eclipse.php.core.ast.visitor.AbstractVisitor;
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Access;
 import com.feenk.pdt2famix.model.famix.Attribute;
+import com.feenk.pdt2famix.model.famix.ContainerEntity;
 import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.Namespace;
@@ -120,10 +122,17 @@ public class AstVisitor extends AbstractVisitor {
 		importer.popFromContainerStack();
 	}
 	
-//	@Override
-//	public boolean visit(TraitUseStatement node) {
-//		return true;
-//	}
+	@Override
+	public boolean visit(TraitUseStatement node) {
+		for (NamespaceName traitName: node.getTraitList()) {
+			ITypeBinding traitBinding = traitName.resolveTypeBinding();
+			if (traitBinding != null) {
+				importer.addTraitUsageToCurrentContainerForTraitBinding(traitBinding);				
+			}
+		}
+		node.getTraitList().get(0).resolveTypeBinding();
+		return true;
+	}
 	
 	// TYPES - INTERFACES
 	

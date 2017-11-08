@@ -72,6 +72,7 @@ import com.feenk.pdt2famix.model.famix.ScopingEntity;
 import com.feenk.pdt2famix.model.famix.SourcedEntity;
 import com.feenk.pdt2famix.model.famix.StructuralEntity;
 import com.feenk.pdt2famix.model.famix.Trait;
+import com.feenk.pdt2famix.model.famix.TraitUsage;
 import com.feenk.pdt2famix.model.famix.Type;
 import com.feenk.pdt2famix.model.famix.UnknownVariable;
 import com.feenk.pdt2famix.model.java.JavaModel;
@@ -130,6 +131,12 @@ public class Importer {
 	public Collection currentAccesses() {
 		return (Collection) repository().getElements().stream()
 			.filter(entity -> entity instanceof Access)
+			.collect(Collectors.toList());
+	}
+	
+	public Collection currentTraitUsages() {
+		return (Collection) repository().getElements().stream()
+			.filter(entity -> entity instanceof TraitUsage)
 			.collect(Collectors.toList());
 	}
 		
@@ -408,6 +415,19 @@ public class Importer {
 		inheritance.setSubclass(subType);
 		repository.add(inheritance);
 		return inheritance;
+	}
+	
+	// TRAIT USAGE
+	
+	public void addTraitUsageToCurrentContainerForTraitBinding(ITypeBinding traitBinding) {
+		TraitUsage traitUsage = new TraitUsage();
+		Type parent = (Type) topOfContainerStack();
+		Trait famixTrait = (Trait) ensureTypeFromTypeBinding(traitBinding);
+		
+		traitUsage.setTrait(famixTrait);
+		traitUsage.setUser(parent);
+		
+		repository.add(traitUsage);
 	}
 	
 	// METHOD
