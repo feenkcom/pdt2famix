@@ -234,6 +234,16 @@ public abstract class InPhpTestCase {
 		//assertEquals(attribute.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
 	}
 	
+	protected void assertAttribute(String attributeName, Type parentType, Type declaredType, boolean hasClassScope,
+			String[] modifiers) {
+		Attribute attribute = attributeInType(parentType, attributeName);
+		
+		assertEquals(hasClassScope, attribute.getHasClassScope() == null ? false : attribute.getHasClassScope() );
+		assertEquals(parentType, attribute.getParentType());
+		assertEquals(declaredType, attribute.getDeclaredType());
+		assertEquals(new HashSet<>(Arrays.asList(modifiers)), new HashSet<>(attribute.getModifiers()));
+	}
+	
 	protected void assertMethodParameter(String parameterName, BehaviouralEntity parentBehaviour, Type declaredType) {
 		List<Parameter> possibleParameters = parentBehaviour.getParameters().stream()
 				.filter( aParameter -> aParameter.getName().equals(parameterName))

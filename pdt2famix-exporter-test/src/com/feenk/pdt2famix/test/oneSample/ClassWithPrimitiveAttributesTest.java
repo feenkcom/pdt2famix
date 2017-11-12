@@ -28,13 +28,13 @@ public class ClassWithPrimitiveAttributesTest extends OneSampleTestCase {
 	
 	@Test
 	public void testClassAttributes() {			
-		assertAttribute("$varUndefined", null);
-		assertAttribute("$varInt", numberType());
-		assertAttribute("$varFloat", numberType());
-		assertAttribute("$varString1", stringType());
-		assertAttribute("$varString2", stringType());
-		assertAttribute("$varBool", booleanType());
-		assertAttribute("$varNull", nullType());
+		assertAttribute("$varUndefined", type, null, false, new String[] {"public"});
+		assertAttribute("$varInt", type, numberType(), false, new String[] {"protected"});
+		assertAttribute("$varFloat", type, numberType(), false, new String[] {"private"});
+		assertAttribute("$varString1", type, stringType(), false, new String[] {"public"});
+		assertAttribute("$varString2", type, stringType(), true, new String[] {"public"});
+		assertAttribute("$varBool", type, booleanType(), true, new String[] {"protected"});
+		assertAttribute("$varNull", type, nullType(), true, new String[] {"private"});
 	}
 	
 }

@@ -16,22 +16,13 @@ public class MethodWithInvocationToAtributeDefinedAfterTest extends OneSampleTes
 
 	@Test
 	public void testModelSize() {
-		// Here there are two namespaces as one is the unknown namespace.
-		assertEquals(1 + 1, importer.namespaces().size());
-		// Also we get two entities because of the unknown entity.
-		assertEquals(1 + 1, importer.types().size());
+		assertEquals(1, importer.namespaces().size());
+		assertEquals(1, importer.types().size());
 		assertEquals(3, importer.methods().size());
 		assertEquals(2, importer.currentInvocations().size());
 		assertEquals(2, importer.currentAccesses().size());
 		assertEquals(2, importer.attributes().size());
 		assertEquals(0, importer.parameters().size());
-	}
-	
-
-	@Test
-	public void testUnknownEntities() {
-		assertUnknownNamespacePresent();
-		assertUnknownTypePresent();
 	}
 	
 	@Test

@@ -23,6 +23,8 @@ import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.dltk.core.DLTKCore;
+import org.eclipse.dltk.core.IField;
 import org.eclipse.dltk.core.IMember;
 import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
@@ -30,12 +32,16 @@ import org.eclipse.dltk.core.IParent;
 import org.eclipse.dltk.core.IProjectFragment;
 import org.eclipse.dltk.core.IScriptProject;
 import org.eclipse.dltk.core.ISourceModule;
+import org.eclipse.dltk.core.IType;
 import org.eclipse.dltk.core.ModelException;
 import org.eclipse.php.core.PHPToolkitUtil;
 import org.eclipse.php.core.PHPVersion;
 import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.ASTParser;
 import org.eclipse.php.core.ast.nodes.ArrayCreation;
+import org.eclipse.php.core.ast.nodes.BindingResolver;
+import org.eclipse.php.core.ast.nodes.Bindings;
+import org.eclipse.php.core.ast.nodes.ClassDeclaration;
 import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.FieldAccess;
 import org.eclipse.php.core.ast.nodes.FormalParameter;
@@ -43,11 +49,16 @@ import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.core.ast.nodes.Identifier;
+import org.eclipse.php.core.ast.nodes.InterfaceDeclaration;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.Program;
 import org.eclipse.php.core.ast.nodes.Reference;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
+import org.eclipse.php.core.ast.nodes.StaticConstantAccess;
+import org.eclipse.php.core.ast.nodes.TraitDeclaration;
+import org.eclipse.php.core.ast.nodes.TypeDeclaration;
 import org.eclipse.php.core.ast.nodes.Variable;
+import org.eclipse.php.core.ast.nodes.VariableBinding;
 import org.eclipse.php.core.ast.visitor.Visitor;
 import org.eclipse.php.core.compiler.PHPFlags;
 import org.eclipse.php.core.compiler.ast.nodes.NamespaceReference;
@@ -566,57 +577,136 @@ public class Importer {
 		return null;
 	}
 	
-	// ATTRIBUTE
+	// ATTRIBUTE - FIELD
 	
 	public Attribute ensureAttributeForFieldDeclaration(SingleFieldDeclaration fieldDeclaration) {
 		IVariableBinding variableBinding = fieldDeclaration.getName().resolveVariableBinding();
 		Attribute attribute;
+
+		// If the variable binding obtained directly from the field declaration is null we attept 
+		// to recover it by navigating to the type declaration node in the AST, and using the
+		// type declaration to locate the actual field. A type declaration can be a class, trait
+		// or interface.
+		if (variableBinding == null) {
+			String fieldName = getNameFromExpression(fieldDeclaration.getName());
+			ASTNode typeDeclarationNode = fieldDeclaration
+					.getParent()  // FieldsDeclaration node
+					.getParent()  // Body node for the class
+					.getParent(); // The type declaration node.
+			if (typeDeclarationNode instanceof TraitDeclaration) {
+				// We implement here a manual search as using findFieldInHierarchy() does not take into account interfaces.
+				ITypeBinding traitBinding = ((TraitDeclaration)typeDeclarationNode).resolveTypeBinding();
+				IVariableBinding[] traitFields = getDeclaredFieldsInTrait(traitBinding, fieldDeclaration.getAST().getBindingResolver());
+				for (int i = 0; i < traitFields.length; i++) {
+					IVariableBinding field = traitFields[i];
+					if (field.getName().equals(fieldName)) {
+						variableBinding = field;
+						break;
+					}
+				}
+			} else if (typeDeclarationNode instanceof ClassDeclaration || typeDeclarationNode instanceof InterfaceDeclaration) {
+				ITypeBinding typeBinding = ((TypeDeclaration)typeDeclarationNode).resolveTypeBinding();
+				variableBinding = Bindings.findFieldInHierarchy(typeBinding, fieldName);
+			}
+		}
 		
 		if (variableBinding == null) {
-			attribute = ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration, false);
-		}
-		else {
+			// attribute = ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration);
+			throw new RuntimeException("Does it ever get here?");
+		} else {
 			attribute = ensureAttributeForVariableBinding(variableBinding);
-			extractBasicModifiersFromBinding(variableBinding.getModifiers(), attribute);
-			if (PHPFlags.isStatic(variableBinding.getModifiers()))
-				attribute.setHasClassScope(true);
-			throw new RuntimeException("Somehow we got a binging");
 		}
+		
+		// When the type of an attribute is computed from a type binding, resolving the type of the attribute
+		// seems not to work (getType()). Because of that in case the attribute has an unknow type or no type,
+		// we resolve the type from the initial value assigned to the attribute.
+		Type declaredType = null;
+		if ( (attribute.getDeclaredType() == null || isUnknowFAMIXType(attribute.getDeclaredType())) && fieldDeclaration.getValue() != null) {
+			ITypeBinding resolvedTypeBinding = fieldDeclaration.getValue().resolveTypeBinding();
+			// Sometimes in the parser the code "public $list = [];" or "private $languageCode = 'EN';" 
+			// does not resolve correcly the type of the value. If we resolve the binding of the type we 
+			// get the current source module. To avoid errors we use the protected call.
+			declaredType = protectedEnsureTypeFromTypeBinding(resolvedTypeBinding, "Field declaration");
+		}
+		attribute.setDeclaredType(declaredType); 
 		attribute.setIsStub(true);
+		
 		return attribute;
 	}
 	
-	public Attribute ensureAttributeFromFieldDeclarationIntoParentType(SingleFieldDeclaration fieldDeclaration, boolean forceDeclaredType) {
+	private IVariableBinding[] getDeclaredFieldsInTrait(ITypeBinding traitBinding, BindingResolver resolver) {
+		List<IVariableBinding> variableBindings = new ArrayList<>();
+
+		for (IModelElement element : traitBinding.getPHPElements()) {
+			IType type = (IType) element;
+			try {
+				IField[] fields = type.getFields();
+				for (int i = 0; i < fields.length; i++) {
+					// TODO: open bug report.
+					// The method getVariableBinding() is private in the resolver.
+					// To overcome this we explicitly create a variable binding instead
+					// of delegating to the resolver.
+					IVariableBinding variableBinding = null;
+					if (fields[i] != null) {
+						variableBinding = new VariableBinding(resolver, fields[i]);
+					}
+					if (variableBinding != null) {
+						variableBindings.add(variableBinding);
+					}
+				}
+			} catch (ModelException e) {
+				if (DLTKCore.DEBUG) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return variableBindings.toArray(new IVariableBinding[variableBindings.size()]);
+	}
+	
+	public Attribute ensureAttributeFromFieldDeclarationIntoParentType(SingleFieldDeclaration fieldDeclaration) {
 		Type parentType = this.topFromContainerStack(Type.class);
 		String name = getNameFromExpression(fieldDeclaration.getName());
 		String qualifiedName = entitiesToKeys.get(parentType)+"^"+name;
-		Attribute attribute;
 		
 		if (attributes.has(qualifiedName)) {
-			attribute = attributes.named(qualifiedName);
-			if (forceDeclaredType == false) {
-				return attribute;
-			}
+			return attributes.named(qualifiedName);
 		} else {
-			attribute = ensureBasicAttribute(parentType, name, qualifiedName, null);
+			return ensureBasicAttribute(parentType, name, qualifiedName, null);
+		}		
+	}
+	
+	// ATRRIBUTE - CONSTANTS
+	
+	/**
+	 * Resolve the binding for the given constant. Right now the implementation of this method does not
+	 * use a variable binding as there is no direct way to obtain the variable binding from the constant.
+	 * 
+	 * This means that if a constant will be accessed before its declaration is visited, it will be resolved
+	 * using its variable binding. This implementation need to make sure it resolves the constant the same way.
+	 * 
+	 * A future solution can be to find the type declaration in the AST and from the type declaration get
+	 * a type binding and use that type binding to obtain a variable binding for the constant.
+	 */
+	public Attribute ensureConstant(Identifier identifier, Expression expression, int modifier) {
+		Type parentType = this.topFromContainerStack(Type.class);
+		String qualifiedName = entitiesToKeys.get(parentType)+"^"+identifier.getName();
+		
+		if (attributes.has(qualifiedName)) {
+			return attributes.named(qualifiedName);
 		}
 		
-		Type declaredType = null;
-		if (fieldDeclaration.getValue() != null) {
-			Expression value = fieldDeclaration.getValue();
-			ITypeBinding resolvedTypeBinding = value.resolveTypeBinding();
-			if (resolvedTypeBinding == null || (resolvedTypeBinding.getPHPElement() != null && resolvedTypeBinding.getPHPElement() == this.currentSourceModel)) {
-				// Sometimes in the parser the code "public $list = [];" or "private $languageCode = 'EN';" 
-				// does not resolve correcly the type of the value. If we resolve the binding of the type we 
-				// get the current source module.
-				// If we encounter that then we just use the unknown type.
-				logInvalidBinding("Field declaration", fieldDeclaration);
-				declaredType = unknownType();
-			} else {
-				declaredType = ensureTypeFromTypeBinding(fieldDeclaration.getValue().resolveTypeBinding());
-			}
+		Attribute attribute = ensureBasicAttribute(parentType, identifier.getName(), qualifiedName, null);
+		extractBasicModifiersFromBinding(modifier, attribute);
+		attribute.setHasClassScope(true);
+		// The modifier returned by the constant declaration node seems to not contain a modifier for const.
+		if (attribute.getModifiers().contains("const") == false) {
+			attribute.addModifiers("const");
 		}
-		attribute.setDeclaredType(declaredType); 
+		
+		if (expression != null) {
+			ITypeBinding resolvedTypeBinding = expression.resolveTypeBinding();
+			attribute.setDeclaredType(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding, "constant value")); 
+		}
 		
 		return attribute;
 	}
@@ -628,6 +718,10 @@ public class Importer {
 	 * @return the Famix attribute associated to the given variable binding.
 	 */
 	private Attribute ensureAttributeForVariableBinding(IVariableBinding variableBinding) {
+		String qualifiedName = variableBinding.getKey();
+		if (attributes.has(qualifiedName)) 
+			return attributes.named(qualifiedName);
+		
 		String name = variableBinding.getName();
 		ITypeBinding parentTypeBinding = variableBinding.getDeclaringClass();
 		Type parentType;
@@ -636,17 +730,16 @@ public class Importer {
 		else 
 			parentType = ensureTypeFromTypeBinding(parentTypeBinding);
 		
-		String qualifiedName = variableBinding.getKey();
-		if (attributes.has(qualifiedName)) 
-			return attributes.named(qualifiedName);
-		
-		Type attributeType;
+		Type attributeType = null;
 		if (variableBinding.getType() != null)  { 
 			attributeType = ensureTypeFromTypeBinding(variableBinding.getType()) ;
-		} else  {
-			attributeType = unknownType();
-		}
+		} 
+		
 		Attribute attribute = ensureBasicAttribute(parentType, name, qualifiedName, attributeType);
+		extractBasicModifiersFromBinding(variableBinding.getModifiers(), attribute);
+		if (PHPFlags.isStatic(variableBinding.getModifiers()) || PHPFlags.isConstant(variableBinding.getModifiers()))
+			attribute.setHasClassScope(true);
+		
 		return attribute;
 	}
 	
@@ -701,21 +794,43 @@ public class Importer {
 	// ACCESSES
 	
 	public Access createAccessFromFieldAccessNode(FieldAccess fieldAccess) {
-		ITypeBinding fieldTypeBinding = fieldAccess.getDispatcher().resolveTypeBinding();
-		IVariableBinding variableBinding; 
+		ITypeBinding typeBinding = fieldAccess.getDispatcher().resolveTypeBinding();
+		IVariableBinding variableBinding;
 		
-		// Only continue if the type binding of the field is valid.
-		if (isValidTypeBinding(fieldTypeBinding) == false) {
+		// If the type binding is not valid there will be a cast exception when resoving the variable binding.
+		if (isValidTypeBinding(typeBinding) == false) {
 			return new Access();
 		}
-		
 		variableBinding = fieldAccess.resolveFieldBinding();
 		if (variableBinding != null) {
 			return createAccessFromVariableBinding(variableBinding);
 		} else {
+			// One reason why the access is not resolved is because it is an access to a variable defined in a trait.
+			// fieldAccess.getDispatcher().resolveTypeBinding().getTraitList(false, getNameFromExpression(fieldAccess.getField()), true);
+//			ITypeBinding fieldTypeBinding = fieldAccess.getDispatcher().resolveTypeBinding();
+//			if (isValidTypeBinding(fieldTypeBinding) == false) {
+//				return new Access();
+//			}
 			return new Access();
 			// It happens! -> take into account
 			// throw new RuntimeException("Let's see if this happens");
+		}
+	}
+	
+	public Access createAccessFromConstantAccessNode(StaticConstantAccess constantAccess) {		
+		ITypeBinding typeBinding =  constantAccess.getClassName().resolveTypeBinding();
+		IVariableBinding variableBinding;
+		
+		// If the type binding is not valid there will be a cast exception when resoving the variable binding.
+		if (isValidTypeBinding(typeBinding) == false) {
+			return new Access();
+		}
+		
+		variableBinding = constantAccess.resolveFieldBinding();
+		if (variableBinding != null) {
+			return createAccessFromVariableBinding(variableBinding);
+		} else {
+			return new Access();
 		}
 	}
 	
@@ -796,6 +911,9 @@ public class Importer {
 		if (PHPFlags.isFinal(modifiers)) {
 			entity.addModifiers("final"); //$NON-NLS-1$
 		}
+		if (PHPFlags.isConstant(modifiers)) {
+			entity.addModifiers("const"); //$NON-NLS-1$
+		}
 	}
 	
 	private String getNameFromExpression(Expression expression) {
@@ -816,9 +934,13 @@ public class Importer {
 	//SOURCE ANCHOR
 	
 	public void createSourceAnchor(SourcedEntity sourcedEntity, ASTNode node) {
+		createSourceAnchor(sourcedEntity, node.getStart(), node.getEnd());
+	}
+	
+	public void createSourceAnchor(SourcedEntity sourcedEntity, int startPosition, int endPosition) {
 		IndexedFileAnchor fileAnchor = new IndexedFileAnchor();
-		fileAnchor.setStartPos(node.getStart());
-		fileAnchor.setEndPos(node.getEnd());
+		fileAnchor.setStartPos(startPosition);
+		fileAnchor.setEndPos(endPosition);
 		fileAnchor.setFileName(pathWithoutIgnoredRootPath(getCurrentFilePath()));
 		sourcedEntity.setSourceAnchor(fileAnchor);
 		repository.add(fileAnchor);

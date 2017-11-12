@@ -1,19 +1,20 @@
 package com.feenk.pdt2famix.inphp;
 
-import java.util.Arrays;
+import java.util.List;
 
-import org.eclipse.dltk.core.IMethod;
 import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.AnonymousClassDeclaration;
-import org.eclipse.php.core.ast.nodes.Assignment;
+import org.eclipse.php.core.ast.nodes.Bindings;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
+import org.eclipse.php.core.ast.nodes.ConstantDeclaration;
 import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.FieldAccess;
 import org.eclipse.php.core.ast.nodes.FormalParameter;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
+import org.eclipse.php.core.ast.nodes.Identifier;
 import org.eclipse.php.core.ast.nodes.InterfaceDeclaration;
 import org.eclipse.php.core.ast.nodes.LambdaFunctionDeclaration;
 import org.eclipse.php.core.ast.nodes.MethodDeclaration;
@@ -21,16 +22,16 @@ import org.eclipse.php.core.ast.nodes.MethodInvocation;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.NamespaceName;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
+import org.eclipse.php.core.ast.nodes.StaticConstantAccess;
 import org.eclipse.php.core.ast.nodes.TraitDeclaration;
 import org.eclipse.php.core.ast.nodes.TraitUseStatement;
 import org.eclipse.php.core.ast.nodes.TypeDeclaration;
-import org.eclipse.php.core.ast.nodes.Variable;
 import org.eclipse.php.core.ast.visitor.AbstractVisitor;
+import org.eclipse.php.core.compiler.PHPFlags;
 
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Access;
 import com.feenk.pdt2famix.model.famix.Attribute;
-import com.feenk.pdt2famix.model.famix.ContainerEntity;
 import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.Namespace;
@@ -53,23 +54,6 @@ public class AstVisitor extends AbstractVisitor {
 	
 	public void logInvalidBinding(String string, Object extraData) {
 		importer.logInvalidBinding(string, extraData);
-	}
-		
-	@Override
-	public boolean visit(Assignment assignment) {
-		// TODO Auto-generated method stub
-		return super.visit(assignment);
-	}
-	
-	@Override
-	public boolean visit(FieldAccess fieldAccess) {
-		
-		Access accces = importer.createAccessFromFieldAccessNode(fieldAccess);
-		if (fieldAccess.getParent().getType() == ASTNode.ASSIGNMENT) {
-			accces.setIsWrite(true);
-		}
-		
-		return true;
 	}
 	
 	@Override
@@ -208,65 +192,65 @@ public class AstVisitor extends AbstractVisitor {
 	// ATTRIBUTES
 	
 	@Override 
-	public boolean visit(SingleFieldDeclaration fieldDeclaration) {			
-		IVariableBinding variableBinding = fieldDeclaration.getName().resolveVariableBinding();
-		Attribute attribute;
-		
-		if (variableBinding == null) {
-			attribute = importer.ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration, true);
-			// Bindings.findFieldInType(null, fieldDeclaration.getName().toString());
-		}
-		else {
-			throw new RuntimeException("Would ne nice to see this error.");
-			//attribute = importer.ensureAttributeForVariableBinding(variableBinding);
-		}
-		
+	public boolean visit(SingleFieldDeclaration fieldDeclaration) {		
+		Attribute attribute = importer.ensureAttributeForFieldDeclaration(fieldDeclaration);
 		importer.createSourceAnchor(attribute, fieldDeclaration);
 		//importer.ensureCommentFromBodyDeclaration(attribute, field);
 		attribute.setIsStub(false);
-		
 		return true;
 	}
 	
-//	// CONSTANTS
-//
-//	@Override
-//	public boolean visit(ConstantDeclaration constantDeclaration) {
-//		logger.trace("visiting constant declaration - " + constantDeclaration.names());
-//		
-//		List<Identifier> names = constantDeclaration.names();
-//		List<Expression> initializers = constantDeclaration.initializers();
-//		for (int index = 0; index < names.size(); index++ ) {
-//			Attribute attribute = importer.ensureConstant(names.get(index), initializers.get(index));
-//			//importer.createSourceAnchor(attribute, fieldDeclaration);
-//			//importer.ensureCommentFromBodyDeclaration(attribute, field);
-//			attribute.setIsStub(false);
-//		}
-//		
-//		return true;
-//	}
+	// CONSTANTS
+
+	@Override
+	public boolean visit(ConstantDeclaration constantDeclaration) {
+		List<Identifier> names = constantDeclaration.names();
+		List<Expression> initializers = constantDeclaration.initializers();
+		
+		for (int index = 0; index < names.size(); index++ ) {
+			Attribute attribute = importer.ensureConstant(names.get(index), initializers.get(index), constantDeclaration.getModifier());
+			importer.createSourceAnchor(attribute, names.get(index).getStart(), initializers.get(index).getEnd());
+			//importer.ensureCommentFromBodyDeclaration(attribute, field);
+			attribute.setIsStub(false);
+		}
+		
+		return true;
+	}
 	
 	// METHOD INVOCATION
 	
 	@Override
 	public boolean visit(MethodInvocation methodInvocation) {
-//		methodInvocation.getMethod().getFunctionName().getName().toString();
-//		methodInvocation.getDispatcher().resolveTypeBinding();
-		// ((Variable)methodInvocation.getDispatcher()).resolveVariableBinding();
 		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
-//		methodBinding.getParameterTypes();
-//		methodInvocation.getMethod().resolveFunctionBinding();
 		if (methodBinding != null) {
 			Expression dispatcherExpression = methodInvocation.getDispatcher();
 			Invocation invocation = importer.createInvocationFromMethodBinding(methodBinding);
 			if (dispatcherExpression != null) {
 				invocation.setReceiver(importer.ensureStructuralEntityFromExpression(dispatcherExpression));
 			}
+			importer.createSourceAnchor(invocation, methodInvocation);
 		}
-		//importer.createAccessFromExpression(methodInvocation.getMethod().);
-//		node.arguments().stream().forEach(arg -> importer.createAccessFromExpression((Expression) arg));
 		return true;
-
 	}
 
+	// FIELD ACCESSES
+	
+	@Override
+	public boolean visit(FieldAccess fieldAccess) {
+		Access accces = importer.createAccessFromFieldAccessNode(fieldAccess);
+		if (fieldAccess.getParent().getType() == ASTNode.ASSIGNMENT) {
+			accces.setIsWrite(true);
+		}
+		importer.createSourceAnchor(accces, fieldAccess);
+		return true;
+	}
+	
+	// CONSTANT ACCESSES
+	
+	@Override
+	public boolean visit(StaticConstantAccess classConstantAccess) {
+		Access accces = importer.createAccessFromConstantAccessNode(classConstantAccess);
+		importer.createSourceAnchor(accces, classConstantAccess);
+		return true;
+	}
 }

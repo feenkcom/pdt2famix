@@ -21,8 +21,8 @@ public class ClassWithTypeAttributesTest extends OneSampleTestCase {
 	
 	@Test
 	public void testClassAttributes() {			
-		assertAttribute("$first", typeNamed("TypeForOneAttribute"));
-		assertAttribute("$second", typeNamed("TypeForOnetherAttribute"));
+		assertAttribute("$first", type, typeNamed("TypeForOneAttribute"), false, new String[] {"public"});
+		assertAttribute("$second", type, typeNamed("TypeForOnetherAttribute"), false, new String[] {"public"});
 	}
 	
 }
