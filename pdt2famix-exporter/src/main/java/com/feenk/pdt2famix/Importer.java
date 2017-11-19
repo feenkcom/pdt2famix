@@ -3,15 +3,10 @@ package com.feenk.pdt2famix;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -19,10 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.dltk.core.DLTKCore;
 import org.eclipse.dltk.core.IField;
 import org.eclipse.dltk.core.IMember;
@@ -34,14 +31,18 @@ import org.eclipse.dltk.core.IScriptProject;
 import org.eclipse.dltk.core.ISourceModule;
 import org.eclipse.dltk.core.IType;
 import org.eclipse.dltk.core.ModelException;
-import org.eclipse.php.core.PHPToolkitUtil;
+import org.eclipse.dltk.core.index2.search.ISearchEngine.MatchRule;
+import org.eclipse.dltk.core.search.IDLTKSearchScope;
+import org.eclipse.dltk.core.search.SearchEngine;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.php.core.PHPVersion;
 import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.ASTParser;
-import org.eclipse.php.core.ast.nodes.ArrayCreation;
 import org.eclipse.php.core.ast.nodes.BindingResolver;
 import org.eclipse.php.core.ast.nodes.Bindings;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
+import org.eclipse.php.core.ast.nodes.Comment;
+import org.eclipse.php.core.ast.nodes.DefaultBindingResolver;
 import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.FieldAccess;
 import org.eclipse.php.core.ast.nodes.FormalParameter;
@@ -56,20 +57,31 @@ import org.eclipse.php.core.ast.nodes.Reference;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
 import org.eclipse.php.core.ast.nodes.StaticConstantAccess;
 import org.eclipse.php.core.ast.nodes.TraitDeclaration;
+import org.eclipse.php.core.ast.nodes.TypeBinding;
 import org.eclipse.php.core.ast.nodes.TypeDeclaration;
 import org.eclipse.php.core.ast.nodes.Variable;
 import org.eclipse.php.core.ast.nodes.VariableBinding;
 import org.eclipse.php.core.ast.visitor.Visitor;
 import org.eclipse.php.core.compiler.PHPFlags;
 import org.eclipse.php.core.compiler.ast.nodes.NamespaceReference;
+import org.eclipse.php.internal.core.model.PHPModelAccess;
 
+import com.dubture.doctrine.annotation.model.Annotation;
+import com.dubture.doctrine.annotation.model.AnnotationBlock;
+import com.dubture.doctrine.annotation.model.AnnotationClass;
+import com.dubture.doctrine.annotation.model.Argument;
+import com.dubture.doctrine.annotation.parser.AnnotationCommentParser;
+import com.dubture.doctrine.core.utils.AnnotationUtils;
 import com.feenk.pdt2famix.inphp.AstVisitor;
 import com.feenk.pdt2famix.model.famix.Access;
+import com.feenk.pdt2famix.model.famix.AnnotationInstance;
+import com.feenk.pdt2famix.model.famix.AnnotationInstanceAttribute;
+import com.feenk.pdt2famix.model.famix.AnnotationType;
+import com.feenk.pdt2famix.model.famix.AnnotationTypeAttribute;
 import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.ContainerEntity;
 import com.feenk.pdt2famix.model.famix.Entity;
 import com.feenk.pdt2famix.model.famix.FAMIXModel;
-import com.feenk.pdt2famix.model.famix.FileAnchor;
 import com.feenk.pdt2famix.model.famix.IndexedFileAnchor;
 import com.feenk.pdt2famix.model.famix.Inheritance;
 import com.feenk.pdt2famix.model.famix.Invocation;
@@ -79,7 +91,6 @@ import com.feenk.pdt2famix.model.famix.NamedEntity;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Parameter;
 import com.feenk.pdt2famix.model.famix.PrimitiveType;
-import com.feenk.pdt2famix.model.famix.ScopingEntity;
 import com.feenk.pdt2famix.model.famix.SourcedEntity;
 import com.feenk.pdt2famix.model.famix.StructuralEntity;
 import com.feenk.pdt2famix.model.famix.Trait;
@@ -101,6 +112,23 @@ public class Importer {
 	public static final String DEFAULT_NAMESPACE_NAME = "";
 	public static final String SYSTEM_NAMESPACE_NAME = "__SYSTEM__";
 	public static final String UNKNOWN_NAME = "__UNKNOWN__";
+	
+	
+	private AnnotationResolver annotationResolver;
+	public AnnotationResolver annotationResolver() {
+		return annotationResolver;
+	}
+	
+	private Map<String, String> usedStatementParts = new HashMap<String, String>();
+	public Map<String, String> usedStatementParts() {
+		return usedStatementParts;
+	}
+	public void resetUsedStatementParts() {
+		usedStatementParts = new HashMap<String, String>();
+	}
+	public void addUsedStatementPart(String alias, String referencedName) {
+		usedStatementParts.put(alias, referencedName);
+	}
 	
 	private Map<Entity,String> entitiesToKeys = new HashMap<>();
 	
@@ -183,7 +211,7 @@ public class Importer {
 		return scriptProject;
 	}
 	
-	public Importer(IScriptProject projectPHP) {
+	public Importer(IScriptProject projectPHP, AnnotationResolver annotationResolver) {
 		MetaRepository metaRepository = new MetaRepository();
 		FAMIXModel.importInto(metaRepository);
 		JavaModel.importInto(metaRepository);
@@ -197,12 +225,15 @@ public class Importer {
 		parameters = new NamedEntityAccumulator<Parameter>(repository);
 		
 		scriptProject = projectPHP; 
+		this.annotationResolver = annotationResolver;
+		this.annotationResolver.setImporter(this);
 	}
 	
 	//NAMESPACE
 	
 	public Namespace ensureNamespaceFromNamespaceDeclaration(NamespaceDeclaration declaration) {
 //		String sourceIdentifier = getCurrentSourceModel().getHandleIdentifier();
+		IDocument document;
 		String namespaceQualifiedName = declaration.getName() == null ? DEFAULT_NAMESPACE_NAME : declaration.getName().getName();
 		return ensureNamespaceNamed(namespaceQualifiedName);
 	}
@@ -277,6 +308,10 @@ public class Importer {
 	}
 	
 	public Type ensureTypeFromTypeBinding(ITypeBinding binding) {
+		return ensureTypeFromTypeBinding(binding, null);
+	}
+	
+	public Type ensureTypeFromTypeBinding(ITypeBinding binding, ASTNode astNode) {
 		// The implementation of #isUnknown is broken in the binging. 
 		// It should be an unknown binding also if the associated array 
 		// of elements has size 0 (now only if it's null)
@@ -292,13 +327,45 @@ public class Importer {
 		if (types.has(qualifiedName)) { 
 			return types.named(qualifiedName); };
 			
-		Type famixType = createTypeFromTypeBinding(binding);
+		
+		if (astNode == null && binding.getPHPElement() instanceof IType) {
+			ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1, ((IType)binding.getPHPElement()).getSourceModule());
+			try {
+				Program program = parser.createAST(null);
+				astNode = program.findDeclaringNode(binding);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+			
+		// Before creating the type of the entity we need to determine if it's an annotation type.
+		// The convention for determining when a type is an annotation can differ from framework to framework.
+		// Currently we will assume the Doctrine convention and consider that an type is an anotation type
+		// if it has @Annotation annotation in the comment, regardless of what the Annotation type resolves to.
+		// To do this we extract here the actual annotations from the comment, and set the to the type
+		// after we create it.
+		List<AnnotationInstance> annotationInstances = new ArrayList<>();	
+		com.feenk.pdt2famix.model.famix.Comment famixComment = null;
+		if (astNode != null) {
+			famixComment = extractCommentFromASTNode(astNode);
+			annotationInstances = annotationResolver.extractAnnotationInstancesFromComment(
+					getSourceFromFamixComment(famixComment, astNode.getProgramRoot()), 
+					astNode.getAST().getBindingResolver());
+		}
+		
+		Type famixType = createTypeFromTypeBinding(binding, annotationInstances);
 		if (binding.getPHPElement() != null) {
 			// For classes that are in a namespace the name returned by the binding also includes the namespace.
 			famixType.setName(binding.getPHPElement().getElementName());
 		} else {
 			famixType.setName(binding.getName());
 		}
+		
+		if (famixComment != null) {
+			famixType.addComments(famixComment);
+			repository.add(famixComment);
+		}
+		famixType.setAnnotationInstances(annotationInstances);
 		
 		types.add(qualifiedName, famixType);
 		entitiesToKeys.put(famixType, qualifiedName);
@@ -314,7 +381,7 @@ public class Importer {
 		return famixType;
 	}
 	
-	private Type createTypeFromTypeBinding(ITypeBinding binding) {
+	private Type createTypeFromTypeBinding(ITypeBinding binding, Collection<AnnotationInstance> annotations) {
 		//TODO: binding.isAmbiguous()
 		//TODO: binding.isNullType()
 		
@@ -330,6 +397,10 @@ public class Importer {
 		if (binding.isTrait()) {
 			return new Trait();
 		}
+		
+		if (annotations.stream().anyMatch(annotation -> annotationResolver.isMainAnnotationTag(annotation))) {
+			return new AnnotationType();
+		};
 		
 		com.feenk.pdt2famix.model.famix.Class clazz = new com.feenk.pdt2famix.model.famix.Class();
 		clazz.setIsInterface(binding.isInterface());
@@ -405,7 +476,7 @@ public class Importer {
 	 * We use this one when we have the super type binding
 	 */
 	private Inheritance createInheritanceFromSubtypeToSuperTypeBinding(Type famixSubType, ITypeBinding superBinding) {
-		return createInheritanceFromSubtypeToSuperType(famixSubType, ensureTypeFromTypeBinding(superBinding));
+		return createInheritanceFromSubtypeToSuperType(famixSubType, protectedEnsureTypeFromTypeBinding(superBinding, "Resolve superclass or interface"));
 	}
 
 	/**
@@ -745,7 +816,12 @@ public class Importer {
 	
 	private Attribute ensureBasicAttribute(Type parentType, String name,
 			String qualifiedName, Type declaredType) {
-		Attribute attribute = new Attribute();
+		Attribute attribute;
+		if (parentType instanceof AnnotationType) {
+			attribute = new AnnotationTypeAttribute();
+		} else {
+			attribute = new Attribute();
+		}
 		attribute.setName(name);
 		attribute.setParentType(parentType);
 		attribute.setDeclaredType(declaredType);
@@ -1048,6 +1124,14 @@ public class Importer {
 				
 				ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1, ((ISourceModule)modelElement));
 				Program program = parser.createAST(null);
+				
+//				// Initialize the comment mapper.
+//				IResource resource = ResourcesPlugin.getWorkspace().getRoot().findMember(((ISourceModule)modelElement).getPath());
+//				TextFileDocumentProvider documentProvider = new TextFileDocumentProvider();
+//				documentProvider.connect(resource);
+//				IDocument document = documentProvider.getDocument(resource);
+//				program.initCommentMapper(document, program.getAST().lexer());
+				
 				if (exportAST) {
 					exportAST(program);
 				}
@@ -1081,5 +1165,71 @@ public class Importer {
 	public String pathWithoutIgnoredRootPath(String originalPath) { 
 		return originalPath.replaceAll("\\\\", "/").replaceFirst("^"+ignoredRootPath+"/", "");
 	}
-
+	
+	
+	// COMMENT
+	
+	public com.feenk.pdt2famix.model.famix.Comment extractCommentFromASTNode(ASTNode astNode) {
+		Comment commentNode = extractMainCommentNodeForASTNode(astNode);
+		// Nothing to do if the comment not present or cannot be detected. 
+		if (commentNode == null) {
+			return null;
+		}
+		com.feenk.pdt2famix.model.famix.Comment famixComment = new com.feenk.pdt2famix.model.famix.Comment();
+		createSourceAnchor(famixComment, commentNode);
+		return famixComment;
+	}
+		
+	public void extractCommentAndAnnotationsFromASTNode(NamedEntity namedEntity, ASTNode astNode) {
+		com.feenk.pdt2famix.model.famix.Comment famixComment = extractCommentFromASTNode(astNode);
+		if (famixComment == null) {
+			return ;
+		}
+		namedEntity.addComments(famixComment);
+		repository.add(famixComment);
+		
+		String commentSource = getSourceFromFamixComment(famixComment, astNode.getProgramRoot());
+		List<AnnotationInstance> annotationInstances = annotationResolver.extractAnnotationInstancesFromComment(commentSource, astNode.getAST().getBindingResolver());
+		namedEntity.setAnnotationInstances(annotationInstances);
+	}
+	
+	
+	private String getSourceFromFamixComment(com.feenk.pdt2famix.model.famix.Comment famixComment, Program programRoot) {
+		String commentSource = "";
+		if (famixComment == null ) {
+			return commentSource;
+		}
+		if (famixComment.getSourceAnchor() instanceof IndexedFileAnchor) {
+			IndexedFileAnchor fileAnchor = (IndexedFileAnchor)famixComment.getSourceAnchor();
+			try {
+				commentSource = programRoot.getSourceModule().getSource().substring(fileAnchor.getStartPos().intValue(), fileAnchor.getEndPos().intValue());
+			} catch (ModelException e) {
+				e.printStackTrace();
+			}
+		} else {
+			throw new RuntimeException("The importer should always generate IndexedFileAnchor. "
+					+ "If this exception appears this methods needs to be updated");
+		}
+		
+		return commentSource;
+	}
+	
+	private Comment extractMainCommentNodeForASTNode(ASTNode astNode) {
+		//TODO: Experiment more with the following:
+		//fieldDeclaration.getProgramRoot().firstLeadingCommentIndex(fieldDeclaration);
+		//fieldDeclaration.getProgramRoot().comments();
+		
+		Program programRoot = astNode.getProgramRoot();
+		int entityStartLine = programRoot.getLineNumber(astNode.getStart());
+		return programRoot.comments().stream()
+				.filter( comment -> {
+					int commentEndLine = programRoot.getLineNumber(comment.getEnd());
+					return 
+							commentEndLine     == entityStartLine ||    // The comment ends on the line on which the entity starts
+							commentEndLine + 1 == entityStartLine ||    // The entity starts on the line following the comment
+							comment.getEnd() + 1 == astNode.getStart(); // The entity starts right after the comment. 
+					})
+				.findFirst()
+				.orElse(null);
+	}
 }

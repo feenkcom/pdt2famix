@@ -30,8 +30,11 @@ import org.eclipse.jdt.launching.LibraryLocation;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
+import com.feenk.pdt2famix.AnnotationResolver;
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Access;
+import com.feenk.pdt2famix.model.famix.AnnotationInstance;
+import com.feenk.pdt2famix.model.famix.AnnotationType;
 import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.BehaviouralEntity;
 import com.feenk.pdt2famix.model.famix.Inheritance;
@@ -120,7 +123,67 @@ public abstract class InPhpTestCase {
 			aType -> assertEquals(namespace, aType.getContainer()));
 	}
 	
+	// ASSERTIONS ANNOTATIONS
+	
+	protected void assertAnnotationTypePresent(String annotationTypeIdentifier) {
+		Type annotationType;
+		
+		assertTrue(importer.types().has(annotationTypeIdentifier));
+		annotationType = importer.types().named(annotationTypeIdentifier);
+		
+		assertEquals(false, annotationType.getIsStub());
+		assertTrue(annotationType instanceof com.feenk.pdt2famix.model.famix.AnnotationType);
+	}
+	
+	protected void assertAnnotationTagType() {
+		String annotationTagTypeName = annotationTagTypeName();
+		String annotationTypeIdentifier = importer.makeTypeQualifiedNameFrom(Importer.SYSTEM_NAMESPACE_NAME, annotationTagTypeName);
+		
+		assertTrue(importer.types().has(annotationTypeIdentifier));
+		Type annotationType = importer.types().named(annotationTypeIdentifier);
+		
+		assertEquals(true, annotationType.getIsStub());
+		assertEquals(importer.systemNamespace(), annotationType.getContainer());
+		assertEquals(annotationTagTypeName, annotationType.getName());
+		assertTrue(annotationType instanceof com.feenk.pdt2famix.model.famix.AnnotationType);	
+	}
+	
+	protected AnnotationInstance locateAnnotationInstanceInType(Type targetClass, AnnotationType annotationType) {
+		List<AnnotationInstance> possibleInstances = targetClass.getAnnotationInstances().stream()
+			.filter(annotationInstance -> annotationInstance.getAnnotationType().equals(annotationType))
+			.collect(Collectors.toList());
+		
+		assertEquals(1, possibleInstances.size());
+		return possibleInstances.get(0);
+	}
+
+	protected void assertAnnotationInstancesForType(Type annotatedType, AnnotationType[] annotationTypes) {
+		assertEquals(annotationTypes.length, annotatedType.getAnnotationInstances().size());
+		 List<AnnotationInstance> extractedAnnotationInstances = Arrays.asList(annotationTypes).stream()
+			.map(annotationType -> annotationType.getInstances().stream()
+					.filter(annotationInstance -> annotationInstance.getAnnotatedEntity().equals(annotatedType))
+					.findFirst())
+			.filter(annotationInstanceOptional -> annotationInstanceOptional.isPresent())
+			.map(annotationInstanceOptional -> annotationInstanceOptional.get())
+			.collect(Collectors.toList());
+		 assertEquals(new HashSet<>(annotatedType.getAnnotationInstances()), new HashSet<>(extractedAnnotationInstances));
+	}
+	
+	protected void assertInstancesForAnnotationType(AnnotationType annotationType, Type[] annotatedTypes) {
+		assertEquals(annotatedTypes.length, annotationType.getInstances().size());
+		 List<AnnotationInstance> extractedAnnotationInstances = Arrays.asList(annotatedTypes).stream()
+			.map(annotatedType -> annotatedType.getAnnotationInstances().stream()
+					.filter(annotationInstance -> annotationInstance.getAnnotationType().equals(annotationType))
+					.findFirst())
+			.filter(annotationInstanceOptional -> annotationInstanceOptional.isPresent())
+			.map(annotationInstanceOptional -> annotationInstanceOptional.get())
+			.collect(Collectors.toList());
+		assertEquals(new HashSet<>(annotationType.getInstances()), new HashSet<>(extractedAnnotationInstances));
+	}
+	
+	
 	// ASSERTIONS CLASSES & TRAITS
+	
 	
 	protected void assertClassPresent(String classIdentifier) {
 		Type classType;
@@ -372,6 +435,16 @@ public abstract class InPhpTestCase {
 	            .get();
 	}
 	
+	protected AnnotationType annotationTypeNamed(String annotationTypeName) {
+		return (AnnotationType) importer.types()
+				.stream()
+	            .filter(type -> 
+	            		type.getName().equals(annotationTypeName) &&
+	            		type instanceof AnnotationType)
+	            .findAny()
+	            .get();
+	}
+	
 	protected Method methodNamed(String name) {
 		return importer.methods()
 				.stream()
@@ -506,20 +579,24 @@ public abstract class InPhpTestCase {
 	
 	
 	protected abstract String sampleDirectory();
+
+	protected String annotationTagName() {
+		return "Annotation";
+	}
 	
-//	private IProject project;
-//	private IScriptProject projectPHP;
+	protected String defaultAnnotationsNamespaceName() {
+		return "annotations";
+	}
+	
+	protected String annotationTagTypeName() {
+		return annotationTagName() + AnnotationResolver.ANNOTATION_TAG_PREFIX;
+	}
 	
 	@Before
 	public void setUp() throws Exception {
-//		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-//		project = root.getProject(PROJECT_NAME);
-//		project.open(null /* IProgressMonitor */);
-//		projectPHP = DLTKCore.create(project);
-		
 		IScriptProject projectPHP = ProjectHolder.getProject(PROJECT_NAME);
-		
-		importer = new Importer(projectPHP);
+		AnnotationResolver annotationResolver = new AnnotationResolver(annotationTagName(), defaultAnnotationsNamespaceName()); 
+		importer = new Importer(projectPHP, annotationResolver);
 		importer.run(projectPHP, Arrays.asList(new String[] {"/" + PROJECT_NAME + "/"+ SAMPLES_NAME +"/" + sampleDirectory()}), false);
 	}
 	

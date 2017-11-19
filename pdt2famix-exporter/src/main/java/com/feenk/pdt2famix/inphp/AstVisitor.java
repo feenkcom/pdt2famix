@@ -5,7 +5,6 @@ import java.util.List;
 import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.AnonymousClassDeclaration;
-import org.eclipse.php.core.ast.nodes.Bindings;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
 import org.eclipse.php.core.ast.nodes.ConstantDeclaration;
 import org.eclipse.php.core.ast.nodes.Expression;
@@ -13,7 +12,6 @@ import org.eclipse.php.core.ast.nodes.FieldAccess;
 import org.eclipse.php.core.ast.nodes.FormalParameter;
 import org.eclipse.php.core.ast.nodes.IMethodBinding;
 import org.eclipse.php.core.ast.nodes.ITypeBinding;
-import org.eclipse.php.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.core.ast.nodes.Identifier;
 import org.eclipse.php.core.ast.nodes.InterfaceDeclaration;
 import org.eclipse.php.core.ast.nodes.LambdaFunctionDeclaration;
@@ -23,12 +21,19 @@ import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.NamespaceName;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
 import org.eclipse.php.core.ast.nodes.StaticConstantAccess;
+import org.eclipse.php.core.ast.nodes.StaticFieldAccess;
+import org.eclipse.php.core.ast.nodes.StaticMethodInvocation;
 import org.eclipse.php.core.ast.nodes.TraitDeclaration;
 import org.eclipse.php.core.ast.nodes.TraitUseStatement;
 import org.eclipse.php.core.ast.nodes.TypeDeclaration;
+import org.eclipse.php.core.ast.nodes.UseStatement;
+import org.eclipse.php.core.ast.nodes.UseStatementPart;
 import org.eclipse.php.core.ast.visitor.AbstractVisitor;
-import org.eclipse.php.core.compiler.PHPFlags;
+import org.eclipse.php.core.compiler.ast.nodes.UsePart;
 
+import com.dubture.doctrine.annotation.model.AnnotationBlock;
+import com.dubture.doctrine.annotation.parser.AnnotationCommentParser;
+import com.dubture.doctrine.core.utils.AnnotationUtils;
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Access;
 import com.feenk.pdt2famix.model.famix.Attribute;
@@ -66,10 +71,39 @@ public class AstVisitor extends AbstractVisitor {
 		return true;
 	}
 	
+	// USE STATEMENT
+	
+	/**
+	 * We override this as we need the used entities to propertly resolve annotations.
+	 */
+	@Override
+	public boolean visit(UseStatement useStatement) {
+		if (useStatement.getStatementType() != UseStatement.T_NONE) {
+			return false;
+		}
+		for (UseStatementPart part : useStatement.parts()) {
+			if (part.getName() == null) {
+				continue;
+			}
+			if (part.getAlias()!=null) {
+				System.out.println();
+			}
+			// TODO: doubleck check the the logic for creating the fullName.
+			String fullName = part.getName().getName();
+			importer.addUsedStatementPart(
+					part.getAlias() == null ? part.getName().getName().toLowerCase() : part.getAlias().getName().toLowerCase(), 
+					fullName);
+
+		}
+		return false;
+	}
+	
+	
 	// NAMESPACES 
 	
 	@Override
 	public boolean visit(NamespaceDeclaration namespaceDeclaration) {
+		importer.resetUsedStatementParts();
 		Namespace namespace = importer.ensureNamespaceFromNamespaceDeclaration(namespaceDeclaration);
 		importer.pushOnContainerStack(namespace);
 		return true;
@@ -145,10 +179,10 @@ public class AstVisitor extends AbstractVisitor {
 			return ;
 		}
 		
-		Type famixType = importer.ensureTypeFromTypeBinding(binding);
+		Type famixType = importer.ensureTypeFromTypeBinding(binding, typeDeclaration);
 		famixType.setIsStub(false);
 		importer.createSourceAnchor(famixType, typeDeclaration);
-//		importer.ensureCommentFromBodyDeclaration(type, node);
+		//importer.extractCommentAndAnnotationsFromASTNode(famixType, typeDeclaration);
 		importer.pushOnContainerStack(famixType);
 	}
 	
@@ -178,7 +212,7 @@ public class AstVisitor extends AbstractVisitor {
 		}
 		
 		importer.createSourceAnchor(famixMethod, methodDeclarationNode);
-//		importer.ensureCommentFromBodyDeclaration(method, node);
+		importer.extractCommentAndAnnotationsFromASTNode(famixMethod, methodDeclarationNode);
 		return true;
 
 	}
@@ -195,7 +229,7 @@ public class AstVisitor extends AbstractVisitor {
 	public boolean visit(SingleFieldDeclaration fieldDeclaration) {		
 		Attribute attribute = importer.ensureAttributeForFieldDeclaration(fieldDeclaration);
 		importer.createSourceAnchor(attribute, fieldDeclaration);
-		//importer.ensureCommentFromBodyDeclaration(attribute, field);
+		importer.extractCommentAndAnnotationsFromASTNode(attribute, fieldDeclaration);
 		attribute.setIsStub(false);
 		return true;
 	}
@@ -210,7 +244,7 @@ public class AstVisitor extends AbstractVisitor {
 		for (int index = 0; index < names.size(); index++ ) {
 			Attribute attribute = importer.ensureConstant(names.get(index), initializers.get(index), constantDeclaration.getModifier());
 			importer.createSourceAnchor(attribute, names.get(index).getStart(), initializers.get(index).getEnd());
-			//importer.ensureCommentFromBodyDeclaration(attribute, field);
+			importer.extractCommentAndAnnotationsFromASTNode(attribute, constantDeclaration);
 			attribute.setIsStub(false);
 		}
 		
@@ -222,7 +256,8 @@ public class AstVisitor extends AbstractVisitor {
 	@Override
 	public boolean visit(MethodInvocation methodInvocation) {
 		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
-		if (methodBinding != null) {
+		//TODO: This only hanles invocations from within methods. Extend to take namespaes into account.
+		if (methodBinding != null && importer.topOfContainerStack() instanceof Method) {
 			Expression dispatcherExpression = methodInvocation.getDispatcher();
 			Invocation invocation = importer.createInvocationFromMethodBinding(methodBinding);
 			if (dispatcherExpression != null) {
@@ -230,6 +265,11 @@ public class AstVisitor extends AbstractVisitor {
 			}
 			importer.createSourceAnchor(invocation, methodInvocation);
 		}
+		return true;
+	}
+	
+	@Override
+	public boolean visit(StaticMethodInvocation methodInvocation) {
 		return true;
 	}
 
@@ -245,6 +285,11 @@ public class AstVisitor extends AbstractVisitor {
 		return true;
 	}
 	
+	@Override
+	public boolean visit(StaticFieldAccess staticFieldAccess) {
+		return true;
+	}
+
 	// CONSTANT ACCESSES
 	
 	@Override
