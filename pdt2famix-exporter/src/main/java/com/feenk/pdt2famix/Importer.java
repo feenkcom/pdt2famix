@@ -119,17 +119,6 @@ public class Importer {
 		return annotationResolver;
 	}
 	
-	private Map<String, String> usedStatementParts = new HashMap<String, String>();
-	public Map<String, String> usedStatementParts() {
-		return usedStatementParts;
-	}
-	public void resetUsedStatementParts() {
-		usedStatementParts = new HashMap<String, String>();
-	}
-	public void addUsedStatementPart(String alias, String referencedName) {
-		usedStatementParts.put(alias, referencedName);
-	}
-	
 	private Map<Entity,String> entitiesToKeys = new HashMap<>();
 	
 	private Namespace systemNamespace;
@@ -350,7 +339,7 @@ public class Importer {
 			famixComment = extractCommentFromASTNode(astNode);
 			annotationInstances = annotationResolver.extractAnnotationInstancesFromComment(
 					getSourceFromFamixComment(famixComment, astNode.getProgramRoot()), 
-					astNode.getAST().getBindingResolver());
+					astNode);
 		}
 		
 		Type famixType = createTypeFromTypeBinding(binding, annotationInstances);
@@ -1189,7 +1178,7 @@ public class Importer {
 		repository.add(famixComment);
 		
 		String commentSource = getSourceFromFamixComment(famixComment, astNode.getProgramRoot());
-		List<AnnotationInstance> annotationInstances = annotationResolver.extractAnnotationInstancesFromComment(commentSource, astNode.getAST().getBindingResolver());
+		List<AnnotationInstance> annotationInstances = annotationResolver.extractAnnotationInstancesFromComment(commentSource, astNode);
 		namedEntity.setAnnotationInstances(annotationInstances);
 	}
 	

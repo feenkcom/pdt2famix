@@ -71,39 +71,10 @@ public class AstVisitor extends AbstractVisitor {
 		return true;
 	}
 	
-	// USE STATEMENT
-	
-	/**
-	 * We override this as we need the used entities to propertly resolve annotations.
-	 */
-	@Override
-	public boolean visit(UseStatement useStatement) {
-		if (useStatement.getStatementType() != UseStatement.T_NONE) {
-			return false;
-		}
-		for (UseStatementPart part : useStatement.parts()) {
-			if (part.getName() == null) {
-				continue;
-			}
-			if (part.getAlias()!=null) {
-				System.out.println();
-			}
-			// TODO: doubleck check the the logic for creating the fullName.
-			String fullName = part.getName().getName();
-			importer.addUsedStatementPart(
-					part.getAlias() == null ? part.getName().getName().toLowerCase() : part.getAlias().getName().toLowerCase(), 
-					fullName);
-
-		}
-		return false;
-	}
-	
-	
 	// NAMESPACES 
 	
 	@Override
 	public boolean visit(NamespaceDeclaration namespaceDeclaration) {
-		importer.resetUsedStatementParts();
 		Namespace namespace = importer.ensureNamespaceFromNamespaceDeclaration(namespaceDeclaration);
 		importer.pushOnContainerStack(namespace);
 		return true;
@@ -118,6 +89,9 @@ public class AstVisitor extends AbstractVisitor {
 	
 	@Override
 	public boolean visit(ClassDeclaration classDeclaration) {
+		if (classDeclaration.getName().getName().equals("FulfillmentRequest")) {
+			System.out.println();
+		}
 		visitTypeDeclaration(classDeclaration);
 		return true;
 	}

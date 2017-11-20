@@ -2,16 +2,24 @@ package com.feenk.pdt2famix;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.dltk.core.IType;
+import org.eclipse.dltk.core.ModelException;
 import org.eclipse.dltk.core.index2.search.ISearchEngine.MatchRule;
 import org.eclipse.dltk.core.search.IDLTKSearchScope;
 import org.eclipse.dltk.core.search.SearchEngine;
+import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.BindingResolver;
+import org.eclipse.php.core.ast.nodes.ITypeBinding;
+import org.eclipse.php.core.ast.nodes.Program;
 import org.eclipse.php.core.ast.nodes.TypeBinding;
 import org.eclipse.php.core.compiler.ast.nodes.NamespaceReference;
 import org.eclipse.php.internal.core.model.PHPModelAccess;
+import org.eclipse.php.internal.core.model.PerFileModelAccessCache;
+import org.eclipse.php.internal.core.typeinference.BindingUtility;
 import org.eclipse.php.internal.core.typeinference.PHPClassType;
 
 import com.dubture.doctrine.annotation.model.Annotation;
@@ -21,10 +29,10 @@ import com.dubture.doctrine.annotation.model.Argument;
 import com.dubture.doctrine.annotation.model.NamedArgument;
 import com.dubture.doctrine.annotation.parser.AnnotationCommentParser;
 import com.dubture.doctrine.core.utils.AnnotationUtils;
+import com.feenk.pdt2famix.inphp.UseStatementsVisitor;
 import com.feenk.pdt2famix.model.famix.AnnotationInstance;
 import com.feenk.pdt2famix.model.famix.AnnotationInstanceAttribute;
 import com.feenk.pdt2famix.model.famix.AnnotationType;
-import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.Namespace;
 import com.feenk.pdt2famix.model.famix.Type;
 
@@ -54,24 +62,9 @@ public class AnnotationResolver {
 		return annotationTagType;
 	}
 	
-	private AnnotationType ensureAnnotationTypeInNamespace(String entityName, Namespace namespace) {
-		String qualifiedName = importer.makeTypeQualifiedNameFrom(entityName, namespace.getName()); 
-		if (importer.types().has(qualifiedName))
-			// If this cast fails then somehow an entity with the same name was created from somewhere else.
-			return (AnnotationType) importer.types().named(qualifiedName); 
-		else {
-			AnnotationType newType = new AnnotationType();
-			
-			newType.setName(entityName);
-			newType.setContainer(namespace);
-			newType.setIsStub(true);
-			importer.types().add(qualifiedName, newType);
-			return newType;
-		}
-	}
-	
-	public List<AnnotationInstance> extractAnnotationInstancesFromComment(String commentSource, BindingResolver bindingResolver) {
+	public List<AnnotationInstance> extractAnnotationInstancesFromComment(String commentSource, ASTNode targetNode) {
 		List<AnnotationInstance> annotationInstances = new ArrayList<>();
+		Map<String, String> usedStatementParts = UseStatementsVisitor.extractUseStatements(targetNode);
 		AnnotationCommentParser commentParser = AnnotationUtils.createParser();
 		AnnotationBlock annotationBlock;
 		try {
@@ -82,14 +75,14 @@ public class AnnotationResolver {
 			return annotationInstances; 
 		}
 		for (Annotation annotationElement: annotationBlock.getAnnotations()) {
-			AnnotationInstance annotationInstance = buildAnnotationInstance(annotationElement, bindingResolver);
+			AnnotationInstance annotationInstance = buildAnnotationInstance(annotationElement, targetNode, usedStatementParts);
 			annotationInstances.add(annotationInstance);
 			importer.repository().add(annotationInstance);
 		}
 		return annotationInstances;
 	}
 	
-	private AnnotationInstance buildAnnotationInstance(Annotation annotationElement, BindingResolver bindingResolver) {
+	private AnnotationInstance buildAnnotationInstance(Annotation annotationElement, ASTNode targetNode, Map<String, String> usedStatementParts) {
 		AnnotationInstance annotationInstance = new AnnotationInstance();	
 		AnnotationType annotationFamixType = null;
 		
@@ -101,15 +94,9 @@ public class AnnotationResolver {
 		if (isMainAnnotationTag(annotationElement)) {
 			annotationFamixType = annotationTagType();
 		} else {
-			annotationFamixType = resolveAnnotationType(annotationElement, bindingResolver);	
+			annotationFamixType = resolveAnnotationType(annotationElement, targetNode, usedStatementParts);	
 		}
-		
-		if (annotationFamixType!= null && annotationFamixType.getName() != null && annotationFamixType.getName().equals("$message") ) {
-			System.out.println();
-		}
-		if (annotationFamixType!= null) {
-			annotationInstance.setAnnotationType(annotationFamixType);
-		}
+		annotationInstance.setAnnotationType(annotationFamixType);
 		
 		for (Argument argumentNode: annotationElement.getArguments()) {
 			AnnotationInstanceAttribute annotationInstanceAttribute = new AnnotationInstanceAttribute();
@@ -137,16 +124,92 @@ public class AnnotationResolver {
 		return !annotationElement.getAnnotationClass().hasNamespace() && annotationTagName.equals(annotationElement.getClassName());
 	}
 	
-	private AnnotationType resolveAnnotationType(Annotation annotationElement, BindingResolver bindingResolver) {
+	
+//	private AnnotationType resolveAnnotationType(Annotation annotationElement, Program rootAST) {
+//		AnnotationType annotationFamixType = null;
+//		ITypeBinding typeBinding = resolveAnnotationTypeBinding(annotationElement, rootAST);
+//		
+//		if (typeBinding != null) {
+//			Type famixType = importer.ensureTypeFromTypeBinding(typeBinding);
+//			if (famixType instanceof AnnotationType) {
+//				annotationFamixType = (AnnotationType)famixType;
+//			} else {
+//				throw new RuntimeException("The type should always be an annotation type");
+//			}
+//		}
+//		// If an annotation type is not found we create one in the unknown namespace, 
+//		// if one is not already present there.
+//		// As an alternative we could check if the annotation defines a namespace, and
+//		// then create the unknow type in that namespace. However, it seems better to
+//		// create unknows types only in the unknown namespace.
+//		if (annotationFamixType == null) {
+//			String annotationName = annotationElement.getAnnotationClass().getClassName();
+//			annotationFamixType = ensureAnnotationTypeInNamespace(annotationName, importer.unknownNamespace());
+//		}
+//		return annotationFamixType;
+//	}
+	
+	/**
+	 * Computes the type binding for the given annotation element.
+	 * <p>
+	 * Normally, I should use the given type binding resolver to locate a type with the same name as the one of the annotation.
+	 * Nonetheless, the API provided by BindingResolver is quite limited. All methods that could be used to resolve
+	 * a type are declared protected. Because of this this method reimplements the logic of DefaultBindingResolver#resolveType.
+	 * This require the creation if a BindingUtility object that us then used to locate the model element that has the same
+	 * name as the class name in the annotation. If a model element can be found then a TypeBinding for that element is
+	 * manually created. 
+	 * 
+	 * @param annotationElement the annotation element for which we want to resolve the type.
+	 * @param rootAST the Program AST node in which the given annotation element is located.
+	 * @return the type binding for the given annotation, or null if a binding cannot be computer.
+	 */
+	private TypeBinding resolveAnnotationTypeBinding(Annotation annotationElement, Program rootAST) {
+		PerFileModelAccessCache modelAccessCache = new PerFileModelAccessCache(rootAST.getSourceModule());
+		BindingUtility bindingUtil = new BindingUtility(rootAST.getSourceModule(), modelAccessCache);
+		IModelElement[] modelElements;
+		try {
+			modelElements = bindingUtil.getModelElement(
+					479+annotationElement.getSourcePosition().startOffset,
+					annotationElement.getSourcePosition().length, 
+					modelAccessCache);
+		} catch (ModelException e) {
+			e.printStackTrace();
+			return null;
+		}
+		if (modelElements!= null && modelElements.length == 1) {
+			if (modelElements[0].getElementType() == IModelElement.TYPE) {
+				return new TypeBinding(rootAST.getAST().getBindingResolver(), PHPClassType.fromIType((IType)modelElements[0]), modelElements[0]);
+			}
+		}
+		return null;
+	}
+	
+	private AnnotationType ensureAnnotationTypeInNamespace(String entityName, Namespace namespace) {
+		String qualifiedName = importer.makeTypeQualifiedNameFrom(namespace.getName(), entityName); 
+		if (importer.types().has(qualifiedName))
+			// If this cast fails then somehow an entity with the same name was created from somewhere else.
+			// Normally this should not happen.
+			return (AnnotationType) importer.types().named(qualifiedName); 
+		else {
+			AnnotationType newType = new AnnotationType();
+			newType.setName(entityName);
+			newType.setContainer(namespace);
+			newType.setIsStub(true);
+			importer.types().add(qualifiedName, newType);
+			return newType;
+		}
+	}
+	
+	private AnnotationType resolveAnnotationType(Annotation annotationElement, ASTNode targetNode, Map<String, String> usedStatementParts) {
 		AnnotationType annotationFamixType = null;
-		IType annotationType = detectAnotationTypeBinding(annotationElement.getAnnotationClass());
+		IType annotationType = detectAnotationTypeBinding(annotationElement.getAnnotationClass(), usedStatementParts);
 		
 		if (annotationType != null) {
 			Type famixType = null;
 			// Once we have a type we need to call #getTypeBinding in the BindingResolver to have access to the type binding.
 			// However, that method is protected within the BindingResolver. Because of that we recreate here the actual
 			// TypeBinding object, as we already have all the necessary information. 
-			TypeBinding typeBinding = new TypeBinding(bindingResolver, PHPClassType.fromIType(annotationType), annotationType);
+			TypeBinding typeBinding = new TypeBinding(targetNode.getProgramRoot().getAST().getBindingResolver(), PHPClassType.fromIType(annotationType), annotationType);
 			famixType = importer.ensureTypeFromTypeBinding(typeBinding);
 			if (famixType instanceof AnnotationType) {
 				annotationFamixType = (AnnotationType)famixType;
@@ -163,7 +226,7 @@ public class AnnotationResolver {
 		return annotationFamixType;
 	}
 	
-	private IType detectAnotationTypeBinding(AnnotationClass node) {
+	private IType detectAnotationTypeBinding(AnnotationClass node, Map<String, String> usedStatementParts) {
 		// TODO: not sure in what case this can happen.
 		if (node.getClassName().length() == 0) {
 			return null;
@@ -175,17 +238,18 @@ public class AnnotationResolver {
 		}
 		String fullName;
 		if (!node.hasNamespace()) {
-			if (importer.usedStatementParts().containsKey(node.getClassName().toLowerCase())) {
-				fullName = importer.usedStatementParts().get(node.getClassName().toLowerCase());
+			if (usedStatementParts.containsKey(node.getClassName().toLowerCase())) {
+				fullName = usedStatementParts.get(node.getClassName().toLowerCase());
 			} else {
 				if (annotationTagName.equals(node.getClassName())) {
 					return null;
 				}
 				fullName = defaultAnnotationNamespaceName + NamespaceReference.NAMESPACE_SEPARATOR + node.getClassName();
+				// fullName = node.getClassName();
 			}
 		} else {
-			if (importer.usedStatementParts().containsKey(node.getFirstNamespacePart().toLowerCase())) {
-				fullName = importer.usedStatementParts().get(node.getFirstNamespacePart().toLowerCase()) + NamespaceReference.NAMESPACE_SEPARATOR + node.getClassName();
+			if (usedStatementParts.containsKey(node.getFirstNamespacePart().toLowerCase())) {
+				fullName = usedStatementParts.get(node.getFirstNamespacePart().toLowerCase()) + NamespaceReference.NAMESPACE_SEPARATOR + node.getClassName();
 			} else {
 				fullName = node.getFullyQualifiedName();
 			}
