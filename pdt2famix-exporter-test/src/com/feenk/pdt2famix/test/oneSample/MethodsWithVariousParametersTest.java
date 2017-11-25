@@ -2,8 +2,12 @@ package com.feenk.pdt2famix.test.oneSample;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
+import java.util.StringJoiner;
+
 import org.junit.Test;
 
+import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
@@ -32,86 +36,143 @@ public class MethodsWithVariousParametersTest extends OneSampleTestCase {
 	
 	@Test
 	public void testMethodWithNoParameters() {
-		Method method = methodNamed("methodWithNoParameters");
+		String methodName = "methodWithNoParameters";
+		Method method = methodNamed(methodName);
 		
 		assertEquals(0, method.getParameters().size());
+		assertMethodSignature(method, methodName+"()");
 	}
 	
+	private void assertMethodSignature(Method method, String expectedSignature) {
+		assertEquals(expectedSignature, method.getSignature());
+	}
+	
+	private String signatureFromParameterTypes(String methodName, String ...parameterTypes) {
+		StringJoiner signatureJoiner = new StringJoiner(", ", "(", ")");
+		Arrays.asList(parameterTypes).stream().forEach(
+			parameterType -> signatureJoiner.add(parameterType));
+		return methodName+signatureJoiner.toString();
+	}
+	
+	private String primitiveTypeSignature(String primitiveTypeName) {
+		return importer.systemNamespace().getName()+"."+primitiveTypeName;
+	}
+	
+	private String defaultTypeSignature(String typeName) {
+		return typeName;
+	}
+
 	@Test
 	public void testMethodWithGenericParameters() {
-		Method method = methodNamed("methodWithGenericParameters");
+		String methodName = "methodWithGenericParameters";
+		Method method = methodNamed(methodName);
 		
 		assertEquals(2, method.getParameters().size());
 		
 		assertMethodParameter("$a", method, null);
 		assertMethodParameter("$b", method, null);
+		assertMethodSignature(method, signatureFromParameterTypes(methodName, Importer.UNKNOWN_NAME, Importer.UNKNOWN_NAME));
 	}
 
 	@Test
 	public void testMethodWithPrimitiveDeclaredParameterTypes() {
-		Method method = methodNamed("methodWithPrimitiveDeclaredParameterTypes");
+		String methodName = "methodWithPrimitiveDeclaredParameterTypes";
+		Method method = methodNamed(methodName);
 		
 		assertEquals(2, method.getParameters().size());
-		
+
 		assertMethodParameter("$a", method, numberType());
 		assertMethodParameter("$b", method, booleanType());
+		assertMethodSignature(method, signatureFromParameterTypes(
+				methodName, 
+				primitiveTypeSignature("number"), 
+				primitiveTypeSignature("boolean")));
 	}
-	
+
 	@Test
 	public void testMethodWithPrimitiveParametersDefaultValue() {
-		Method method = methodNamed("methodWithPrimitiveParametersDefaultValue");
+		String methodName = "methodWithPrimitiveParametersDefaultValue";
+		Method method = methodNamed(methodName);
 		
 		assertEquals(2, method.getParameters().size());
 		
 		assertMethodParameter("$a", method, numberType());
 		assertMethodParameter("$b", method, stringType());
+		assertMethodSignature(method, signatureFromParameterTypes(
+				methodName, 
+				primitiveTypeSignature("number"), 
+				primitiveTypeSignature("string")));
 	}
 	
 	@Test
 	public void testMethodWithStandardObjectsAsParameters() {
-		Method method = methodNamed("methodWithStandardObjectsAsParameters");
+		String methodName = "methodWithStandardObjectsAsParameters";
+		Method method = methodNamed(methodName);
 		
 		assertEquals(2, method.getParameters().size());
 		
 		assertMethodParameter("$date1", method, typeNamed("DateTime"));
 		assertMethodParameter("$date2", method, typeNamed("DateTime"));
+		assertMethodSignature(method, signatureFromParameterTypes(
+				methodName, 
+				defaultTypeSignature("DateTime"), 
+				defaultTypeSignature("DateTime")));
 	}
 	
 	@Test
 	public void testMethodWithSelfParameterTypes() {
-		Method method = methodNamed("methodWithSelfParameterTypes");
+		String methodName = "methodWithSelfParameterTypes";
+		Method method = methodNamed(methodName);
 		
 		assertEquals(1, method.getParameters().size());
 		
 		assertMethodParameter("$param1", method, type);
+		assertMethodSignature(method, signatureFromParameterTypes(
+				methodName, 
+				defaultTypeSignature("MethodsWithVariousParameters")));
 	}
 	
 	@Test
 	public void testMethodWithDefaultSelfParameterTypes() {
-		Method method = methodNamed("methodWithDefaultSelfParameterTypes");
+		String methodName = "methodWithDefaultSelfParameterTypes";
+		Method method = methodNamed(methodName);
+		
 		
 		assertEquals(2, method.getParameters().size());
 		
 		assertMethodParameter("$param1", method, type);
 		assertMethodParameter("$param2", method, type);
+		assertMethodSignature(method, signatureFromParameterTypes(
+				methodName, 
+				defaultTypeSignature("MethodsWithVariousParameters"),
+				defaultTypeSignature("MethodsWithVariousParameters")));
 	}
 	
 	@Test
 	public void testMethodWithCustomParameterTypes() {
-		Method method = methodNamed("methodWithCustomParameterTypes");
+		String methodName = "methodWithCustomParameterTypes";
+		Method method = methodNamed(methodName);
 		
 		assertEquals(2, method.getParameters().size());
 		
 		assertMethodParameter("$param1", method, typeNamed("AClassForMethodParametersUsage"));
 		assertMethodParameter("$param2", method, typeNamed("AnInterfaceForMethodParametersUsage"));
+		assertMethodSignature(method, signatureFromParameterTypes(
+				methodName, 
+				defaultTypeSignature("AClassForMethodParametersUsage"),
+				defaultTypeSignature("AnInterfaceForMethodParametersUsage")));
 	}
 	
 	@Test
 	public void testMethodWithPolymorphicParameterType() {
-		Method method = methodNamed("methodWithPolymorphicParameterType");
+		String methodName = "methodWithPolymorphicParameterType";
+		Method method = methodNamed(methodName);
 		
 		assertEquals(1, method.getParameters().size());
 		
 		assertMethodParameter("$param", method, typeNamed("AnInterfaceForMethodParametersUsage"));
+		assertMethodSignature(method, signatureFromParameterTypes(
+				methodName, 
+				defaultTypeSignature("AnInterfaceForMethodParametersUsage")));
 	}
 }

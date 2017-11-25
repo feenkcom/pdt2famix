@@ -1,6 +1,7 @@
 package com.feenk.pdt2famix.inphp;
 
 import java.util.List;
+import java.util.StringJoiner;
 
 import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.php.core.ast.nodes.ASTNode;
@@ -34,12 +35,14 @@ import org.eclipse.php.core.compiler.ast.nodes.UsePart;
 import com.dubture.doctrine.annotation.model.AnnotationBlock;
 import com.dubture.doctrine.annotation.parser.AnnotationCommentParser;
 import com.dubture.doctrine.core.utils.AnnotationUtils;
+import com.feenk.pdt2famix.Famix;
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Access;
 import com.feenk.pdt2famix.model.famix.Attribute;
 import com.feenk.pdt2famix.model.famix.Invocation;
 import com.feenk.pdt2famix.model.famix.Method;
 import com.feenk.pdt2famix.model.famix.Namespace;
+import com.feenk.pdt2famix.model.famix.Parameter;
 import com.feenk.pdt2famix.model.famix.Type;
 
 import pdt2famix_exporter.Activator;
@@ -165,30 +168,39 @@ public class AstVisitor extends AbstractVisitor {
 	@Override
 	public boolean visit(MethodDeclaration methodDeclarationNode) {
  		IMethodBinding methodBinding = methodDeclarationNode.resolveMethodBinding();
-		ITypeBinding declatingClass  = methodBinding.getDeclaringClass();
-		ITypeBinding[] returnType    = methodBinding.getReturnType();
-				
-		IModelElement modelElement = methodBinding.getPHPElement();		
 		Method famixMethod;
 		if (methodBinding != null) {
 			famixMethod = importer.ensureMethodFromMethodBindingToCurrentContainer(methodBinding);
 		}
 		else {
-			logNullBinding("method declaration", methodDeclarationNode.getFunction().getFunctionName(), methodDeclarationNode.getStart());
+//			logNullBinding("method declaration", methodDeclarationNode.getFunction().getFunctionName(), methodDeclarationNode.getStart());
 //			famixMethod = importer.ensureMethodFromMethodDeclaration(methodDeclarationNode);
 			return true;
 		}
 		famixMethod.setIsStub(false);
 		importer.pushOnContainerStack(famixMethod);
 		
+		StringJoiner signatureJoiner = new StringJoiner(", ", "(", ")");
 		for (FormalParameter parameter: methodDeclarationNode.getFunction().formalParameters()) {
-			importer	.parameterFromFormalParameterDeclaration(parameter, famixMethod, methodBinding.getKey());
+			Parameter famixParameter = importer.parameterFromFormalParameterDeclaration(parameter, famixMethod, methodBinding.getKey());
+			
+			// Create the signature after extracting the parameter. We need to do it here as from a IMethodBinding we do not get access
+			// to the actual parameter types. 
+			if (famixParameter.getDeclaredType() != null) {
+				if (famixParameter.getDeclaredType().getContainer().getName().equals(Importer.DEFAULT_NAMESPACE_NAME)) {
+					signatureJoiner.add(famixParameter.getDeclaredType().getName());
+				} else {
+					signatureJoiner.add(Famix.qualifiedNameOf(famixParameter.getDeclaredType()));
+				}
+			} else {
+				signatureJoiner.add(Importer.UNKNOWN_NAME);
+			}
 		}
+		famixMethod.setSignature(methodDeclarationNode.getFunction().getFunctionName().getName()+signatureJoiner.toString());
 		
 		importer.createSourceAnchor(famixMethod, methodDeclarationNode);
 		importer.extractCommentAndAnnotationsFromASTNode(famixMethod, methodDeclarationNode);
 		return true;
-
 	}
 	
 	@Override
@@ -227,23 +239,24 @@ public class AstVisitor extends AbstractVisitor {
 	
 	// METHOD INVOCATION
 	
+	
 	@Override
 	public boolean visit(MethodInvocation methodInvocation) {
-		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
 		//TODO: This only hanles invocations from within methods. Extend to take namespaes into account.
-		if (methodBinding != null && importer.topOfContainerStack() instanceof Method) {
-			Expression dispatcherExpression = methodInvocation.getDispatcher();
-			Invocation invocation = importer.createInvocationFromMethodBinding(methodBinding);
-			if (dispatcherExpression != null) {
-				invocation.setReceiver(importer.ensureStructuralEntityFromExpression(dispatcherExpression));
-			}
+		if (importer.topOfContainerStack() instanceof Method) {
+			Invocation invocation = importer.createInvocationFromMethodInvocation(methodInvocation);
 			importer.createSourceAnchor(invocation, methodInvocation);
 		}
 		return true;
 	}
 	
 	@Override
-	public boolean visit(StaticMethodInvocation methodInvocation) {
+	public boolean visit(StaticMethodInvocation methodInvocation) {		
+		//TODO: This only hanles invocations from within methods. Extend to take namespaes into account.
+		if (importer.topOfContainerStack() instanceof Method) {
+			Invocation invocation = importer.createInvocationFromMethodInvocation(methodInvocation);
+			importer.createSourceAnchor(invocation, methodInvocation);
+		}
 		return true;
 	}
 

@@ -13,6 +13,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -51,11 +52,14 @@ import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.core.ast.nodes.Identifier;
 import org.eclipse.php.core.ast.nodes.InterfaceDeclaration;
+import org.eclipse.php.core.ast.nodes.MethodDeclaration;
+import org.eclipse.php.core.ast.nodes.MethodInvocation;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.Program;
 import org.eclipse.php.core.ast.nodes.Reference;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
 import org.eclipse.php.core.ast.nodes.StaticConstantAccess;
+import org.eclipse.php.core.ast.nodes.StaticMethodInvocation;
 import org.eclipse.php.core.ast.nodes.TraitDeclaration;
 import org.eclipse.php.core.ast.nodes.TypeBinding;
 import org.eclipse.php.core.ast.nodes.TypeDeclaration;
@@ -407,11 +411,7 @@ public class Importer {
 			throw new RuntimeException("Update the detection of the parent");
 		}
 		
-		declaringType = ((IMember)binding.getPHPElement()).getDeclaringType();
-		
-		binding.getEvaluatedType().getTypeName();
-		binding.getPHPElement().getParent().getHandleIdentifier();
-		
+		declaringType = ((IMember)binding.getPHPElement()).getDeclaringType();		
 		if (declaringType != null) {
 			boolean isNamespace = false;
 			try {
@@ -528,13 +528,51 @@ public class Importer {
 		return ensureMethodFromMethodBinding(binding, famixClassType);
 	}
 	
-	public Method ensureMethodFromMethodBinding(IMethodBinding methodBinding, Type parentType) {
+//	public Method ensureMethodFromMethodDeclaration(MethodDeclaration methodDeclarationNode) {
+//		StringJoiner signatureJoiner = new StringJoiner(", ", "(", ")");
+//		methodDeclarationNode.getFunction().formalParameters()
+//			.stream()
+//			.forEach( p -> signatureJoiner.add(p.getParameterName()) );
+//		String methodName = methodDeclarationNode.getFunction().getFunctionName().toString();
+//		String signature = methodName + signatureJoiner.toString();		
+//		return ensureBasicMethod(
+//				methodName, 
+//				signature, 
+//				(Type) topOfContainerStack(),
+//				m -> setUpMethodFromMethodDeclaration(m, node));
+//	}
+	
+	private Method ensureMethodFromMethodBinding(IMethodBinding methodBinding, Type parentType) {
 		String methodName = methodBinding.getName();
+
+//		// For library methods the only way to get the actual signature is to obtain the actual AST nodes.
+//		// To do need to obtain the actual AST.
+//		// Before doing this we should check if the method is actually a stub: is the path of the container file in
+//		// a path that would be handled by the parser. If yes the AST will anyway be visited at a certain point so we do 
+//		// not have to extract here the signature.
+//		ASTNode astNode = null;
+//		ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1, ((IMethod)methodBinding.getPHPElement()).getSourceModule());
+//		try {
+//			Program program = parser.createAST(null);
+//			astNode = program.findDeclaringNode(methodBinding);
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
+		
 		return ensureBasicMethod(
 				methodName,  
 				methodBinding.getKey(),
+				null,
 				parentType,
 				famixMethod -> setUpMethodFromMethodBinding(famixMethod, methodBinding));
+	}
+	
+	private void appendTypeToMethodSignature(Type famixParameterType, StringJoiner signatureJoiner) {
+		if (famixParameterType.getContainer().getName().equals(Importer.DEFAULT_NAMESPACE_NAME)) {
+			signatureJoiner.add(famixParameterType.getName());
+		} else {
+			signatureJoiner.add(Famix.qualifiedNameOf(famixParameterType));
+		}
 	}
 	
 	private void setUpMethodFromMethodBinding(Method method, IMethodBinding binding) {
@@ -562,14 +600,14 @@ public class Importer {
 //		}
 	}
 	
-	public Method ensureBasicMethod(String methodName, String identifierKey, Type parentType, Consumer<Method> ifAbsent) {
+	private Method ensureBasicMethod(String methodName, String identifierKey, String signature, Type parentType, Consumer<Method> ifAbsent) {
 		String qualifiedName = identifierKey;
 		if(methods.has(qualifiedName))
 			return methods.named(qualifiedName);
 		Method method = new Method();
 		method.setName(methodName);
 		methods.add(qualifiedName, method);
-//		method.setSignature(signature);
+		method.setSignature(signature);
 		method.setIsStub(true);
 		method.setParentType(parentType);
 		ifAbsent.accept(method);
@@ -820,16 +858,56 @@ public class Importer {
 	
 	// INVOCATIONS
 	
-	public Invocation createInvocationFromMethodBinding(IMethodBinding binding) {		
+	public Invocation createInvocationFromMethodInvocation(MethodInvocation methodInvocation) {	
 		Invocation invocation = new Invocation();
 		invocation.setSender((Method) topOfContainerStack()); 
-		if (binding != null)
+		
+		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
+		if (methodBinding != null) {
+			Expression dispatcherExpression = methodInvocation.getDispatcher();
+			if (dispatcherExpression != null) {
+				invocation.setReceiver(ensureStructuralEntityFromExpression(dispatcherExpression));
+			}
 			//TODO: If the binding is null we can still get the name if the method
-			invocation.addCandidates(ensureMethodFromMethodBinding(binding));  
-		//invocation.setSignature(signature);
+			invocation.addCandidates(ensureMethodFromMethodBinding(methodBinding)); 
+		}
+							 
+		try {
+			invocation.setSignature(methodInvocation.getProgramRoot().getSourceModule().getSource().substring(
+					methodInvocation.getStart(),
+					methodInvocation.getEnd()));
+		} catch (ModelException e) {
+			e.printStackTrace();
+		}
 		repository.add(invocation);
 		return invocation;
 	}
+	
+	public Invocation createInvocationFromMethodInvocation(StaticMethodInvocation methodInvocation) {	
+		Invocation invocation = new Invocation();
+		invocation.setSender((Method) topOfContainerStack()); 
+		
+		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
+		if (methodBinding != null) {
+			Expression dispatcherExpression = methodInvocation.getClassName();
+			if (dispatcherExpression != null) {
+				invocation.setReceiver(ensureStructuralEntityFromExpression(dispatcherExpression));
+			}
+			//TODO: If the binding is null we can still get the name if the method
+			invocation.addCandidates(ensureMethodFromMethodBinding(methodBinding)); 
+		}
+							 
+		try {
+			invocation.setSignature(methodInvocation.getProgramRoot().getSourceModule().getSource().substring(
+					methodInvocation.getStart(),
+					methodInvocation.getEnd()));
+		} catch (ModelException e) {
+			e.printStackTrace();
+		}
+		repository.add(invocation);
+		return invocation;
+	}
+	
 	
 	public StructuralEntity ensureStructuralEntityFromExpression(Expression expression) {
 		IVariableBinding variableBinding = null;
@@ -981,7 +1059,7 @@ public class Importer {
 		}
 	}
 	
-	private String getNameFromExpression(Expression expression) {
+	public String getNameFromExpression(Expression expression) {
 		switch (expression.getType()) {
 		case ASTNode.REFERENCE:
 			expression = ((Reference) expression).getExpression();
@@ -1036,11 +1114,9 @@ public class Importer {
 		return qualifiedName;
 	}
 	
-	
 	public String makeTypeQualifiedNameFrom(String containerQualifiedName, String entityName) {
 		return containerQualifiedName.isEmpty() ? entityName : containerQualifiedName + NAME_SEPARATOR + entityName ;
 	}
-	
 	
 	public String entityBasenameFrom(String qualifiedEntityName) {
 		int lastIndexOfSeparator = qualifiedEntityName.lastIndexOf(NAME_SEPARATOR);

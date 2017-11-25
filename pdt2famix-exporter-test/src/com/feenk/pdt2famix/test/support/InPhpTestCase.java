@@ -286,6 +286,12 @@ public abstract class InPhpTestCase {
 		assertEquals(method.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
 	}
 	
+	protected void assertStaticMethod(Method method, String[] modifiers, String kind) {
+		assertEquals(true, method.getHasClassScope() == null ? false : method.getHasClassScope() );
+		assertEquals(kind, method.getKind());
+		assertEquals(method.getModifiers(), new HashSet<>(Arrays.asList(modifiers)));
+	}
+	
 	// ASSERTIONS ATTRIBUTES & PARAMETERS
 	
 	protected void assertAttribute(String attributeName, Type parentType, Type declaredType) {
@@ -344,6 +350,16 @@ public abstract class InPhpTestCase {
 				invocation -> receiver == null ? invocation.getReceiver() == null :  invocation.getReceiver().equals(receiver) );
 	}
 
+	protected void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity candidate, NamedEntity receiver, String signature) {
+		assertInvocationProperties(invocation, sender, candidate, receiver);	
+		assertEquals(signature, invocation.getSignature());
+	}
+	
+	protected void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender,  BehaviouralEntity[] candidates, NamedEntity receiver, String signature) {
+		assertInvocationProperties(invocation, sender, candidates, receiver);	
+		assertEquals(signature, invocation.getSignature());
+	}
+	
 	protected void assertInvocationProperties(Invocation invocation, BehaviouralEntity sender, BehaviouralEntity candidate, NamedEntity receiver) {
 		assertInvocationProperties(invocation, sender, new BehaviouralEntity[] {candidate}, receiver);	
 	}
@@ -360,6 +376,12 @@ public abstract class InPhpTestCase {
 		assertEquals(new HashSet<>(Arrays.asList(candidates)), new HashSet<>(invocation.getCandidates()));
 	}
 
+	protected void assertOneInvocation(Method callerMethod, Method calledMethod) {
+		assertEquals(0, callerMethod.getIncomingInvocations().size());
+		assertEquals(1, callerMethod.getOutgoingInvocations().size());
+		assertEquals(1, calledMethod.getIncomingInvocations().size());
+		assertEquals(0, calledMethod.getOutgoingInvocations().size());
+	}
 
 	// ASSERTIONS ACCESSES
 	
