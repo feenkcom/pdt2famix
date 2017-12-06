@@ -21,8 +21,8 @@ public class MethodsWithVariousParametersTest extends OneSampleTestCase {
 	public void testModelSize() {
 		assertEquals(2 + 1, importer.namespaces().size()); // Account for generated unknown namespace
 		assertEquals(8 + 1, importer.types().size());      // Account for generated unknown type
-		assertEquals(9, importer.methods().size());
-		assertEquals(0, importer.currentInvocations().size());
+		assertEquals(9+3, importer.methods().size());
+		assertEquals(4, importer.currentInvocations().size());
 		assertEquals(0, importer.currentAccesses().size());
 		assertEquals(0, importer.attributes().size());
 		assertEquals(14, importer.parameters().size());

@@ -17,8 +17,8 @@ public class MethodsWithVariousStaticCallsTest extends OneSampleTestCase {
 	public void testModelSize() {
 		assertEquals(1, importer.namespaces().size());
 		assertEquals(2, importer.types().size());
-		assertEquals(11, importer.methods().size());
-		assertEquals(6, importer.currentInvocations().size());
+		assertEquals(11+2, importer.methods().size());
+		assertEquals(6+2, importer.currentInvocations().size());
 		assertEquals(1, importer.currentAccesses().size()); // Not good. 
 		assertEquals(1, importer.attributes().size());
 		assertEquals(2, importer.parameters().size());
@@ -57,7 +57,7 @@ public class MethodsWithVariousStaticCallsTest extends OneSampleTestCase {
 		assertEquals(0, mainMethod.getIncomingInvocations().size());
 		assertEquals(2, mainMethod.getOutgoingInvocations().size());
 		assertEquals(1, helperMethod31.getIncomingInvocations().size());
-		assertEquals(0, helperMethod31.getOutgoingInvocations().size());
+		assertEquals(1, helperMethod31.getOutgoingInvocations().size());
 		assertEquals(1, helperMethod32.getIncomingInvocations().size());
 		assertEquals(0, helperMethod32.getOutgoingInvocations().size());
 		

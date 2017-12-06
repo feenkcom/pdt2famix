@@ -3,10 +3,10 @@ package com.feenk.pdt2famix.inphp;
 import java.util.List;
 import java.util.StringJoiner;
 
-import org.eclipse.dltk.core.IModelElement;
 import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.AnonymousClassDeclaration;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
+import org.eclipse.php.core.ast.nodes.ClassInstanceCreation;
 import org.eclipse.php.core.ast.nodes.ConstantDeclaration;
 import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.FieldAccess;
@@ -27,14 +27,8 @@ import org.eclipse.php.core.ast.nodes.StaticMethodInvocation;
 import org.eclipse.php.core.ast.nodes.TraitDeclaration;
 import org.eclipse.php.core.ast.nodes.TraitUseStatement;
 import org.eclipse.php.core.ast.nodes.TypeDeclaration;
-import org.eclipse.php.core.ast.nodes.UseStatement;
-import org.eclipse.php.core.ast.nodes.UseStatementPart;
 import org.eclipse.php.core.ast.visitor.AbstractVisitor;
-import org.eclipse.php.core.compiler.ast.nodes.UsePart;
 
-import com.dubture.doctrine.annotation.model.AnnotationBlock;
-import com.dubture.doctrine.annotation.parser.AnnotationCommentParser;
-import com.dubture.doctrine.core.utils.AnnotationUtils;
 import com.feenk.pdt2famix.Famix;
 import com.feenk.pdt2famix.Importer;
 import com.feenk.pdt2famix.model.famix.Access;
@@ -56,11 +50,11 @@ public class AstVisitor extends AbstractVisitor {
 		this.importer = importer;
 	}
 		
-	public void logNullBinding(String string, Object extraData, int lineNumber) {
-		importer.logNullBinding(string, extraData, lineNumber);
+	public void logNullBinding(String string, String extraData) {
+		importer.logNullBinding(string, extraData);
 	}
 	
-	public void logInvalidBinding(String string, Object extraData) {
+	public void logInvalidBinding(String string, String extraData) {
 		importer.logInvalidBinding(string, extraData);
 	}
 	
@@ -92,9 +86,6 @@ public class AstVisitor extends AbstractVisitor {
 	
 	@Override
 	public boolean visit(ClassDeclaration classDeclaration) {
-		if (classDeclaration.getName().getName().equals("FulfillmentRequest")) {
-			System.out.println();
-		}
 		visitTypeDeclaration(classDeclaration);
 		return true;
 	}
@@ -148,11 +139,7 @@ public class AstVisitor extends AbstractVisitor {
 	private void visitTypeDeclaration(TypeDeclaration typeDeclaration) {
 		ITypeBinding binding = typeDeclaration.resolveTypeBinding();
 		if (binding == null) {
-			logNullBinding("type declaration", typeDeclaration.getName(), typeDeclaration.getStart());
-			return ;
-		}
-		if (importer.isValidTypeBinding(binding) == false) {
-			logInvalidBinding("type declaration", typeDeclaration.getName());
+			logNullBinding("type declaration", typeDeclaration.getName().getName());
 			return ;
 		}
 		
@@ -212,12 +199,21 @@ public class AstVisitor extends AbstractVisitor {
 	// ATTRIBUTES
 	
 	@Override 
-	public boolean visit(SingleFieldDeclaration fieldDeclaration) {		
+	public boolean visit(SingleFieldDeclaration fieldDeclaration) {
+		if (shouldRecordExpression(fieldDeclaration.getValue())) {
+			importer.pushOnContainerStack(importer.ensureInitializerMethod());
+		};
 		Attribute attribute = importer.ensureAttributeForFieldDeclaration(fieldDeclaration);
 		importer.createSourceAnchor(attribute, fieldDeclaration);
 		importer.extractCommentAndAnnotationsFromASTNode(attribute, fieldDeclaration);
 		attribute.setIsStub(false);
 		return true;
+	}
+	
+	@Override
+	public void endVisit(SingleFieldDeclaration fieldDeclaration) {
+		if (importer.topOfContainerStack().getName().equals(Importer.INITIALIZER_NAME))
+			importer.popFromContainerStack();
 	}
 	
 	// CONSTANTS
@@ -226,6 +222,10 @@ public class AstVisitor extends AbstractVisitor {
 	public boolean visit(ConstantDeclaration constantDeclaration) {
 		List<Identifier> names = constantDeclaration.names();
 		List<Expression> initializers = constantDeclaration.initializers();
+		
+		if (initializers.stream().anyMatch(this::shouldRecordExpression)) {
+			importer.pushOnContainerStack(importer.ensureInitializerMethod());
+		};
 		
 		for (int index = 0; index < names.size(); index++ ) {
 			Attribute attribute = importer.ensureConstant(names.get(index), initializers.get(index), constantDeclaration.getModifier());
@@ -237,11 +237,25 @@ public class AstVisitor extends AbstractVisitor {
 		return true;
 	}
 	
+	@Override
+	public void endVisit(ConstantDeclaration constantDeclaration) {
+		if (importer.topOfContainerStack().getName().equals(Importer.INITIALIZER_NAME))
+			importer.popFromContainerStack();
+	}
+	
+	/**
+	 * Return true if the given expression should be recorder.
+	 */
+	private boolean shouldRecordExpression(Expression expression) {
+		return expression != null && expression.getType() != ASTNode.SCALAR;
+	}
+	
 	// METHOD INVOCATION
 	
 	
 	@Override
 	public boolean visit(MethodInvocation methodInvocation) {
+		//logger.trace("MethodInvocation: "+ methodInvocation.getMethod().getFunctionName().getName());
 		//TODO: This only hanles invocations from within methods. Extend to take namespaes into account.
 		if (importer.topOfContainerStack() instanceof Method) {
 			Invocation invocation = importer.createInvocationFromMethodInvocation(methodInvocation);
@@ -252,10 +266,29 @@ public class AstVisitor extends AbstractVisitor {
 	
 	@Override
 	public boolean visit(StaticMethodInvocation methodInvocation) {		
+		//logger.trace("StaticMethodInvocation: "+ methodInvocation.getMethod().getFunctionName().getName());
 		//TODO: This only hanles invocations from within methods. Extend to take namespaes into account.
 		if (importer.topOfContainerStack() instanceof Method) {
 			Invocation invocation = importer.createInvocationFromMethodInvocation(methodInvocation);
 			importer.createSourceAnchor(invocation, methodInvocation);
+		}
+		return true;
+	}
+	
+	@Override
+	public boolean visit(ClassInstanceCreation classInstanceCreation) {
+		IMethodBinding constructorBinding = classInstanceCreation.resolveConstructorBinding();
+		ITypeBinding classTypeBinding = classInstanceCreation.resolveTypeBinding();
+		Invocation invocation = null;
+		
+		if (constructorBinding != null) {
+			invocation = importer.createInvocationFromMethodBinding(constructorBinding, classInstanceCreation);
+		} else if (classTypeBinding != null) {
+			Method famixMethod = importer.ensureConstructorForTypeBinding(classTypeBinding, classInstanceCreation.getAST().getBindingResolver());
+			invocation = importer.createInvocationToFamixMethod(famixMethod, classInstanceCreation);
+		}
+		if (invocation != null) {
+			importer.createSourceAnchor(invocation, classInstanceCreation);
 		}
 		return true;
 	}

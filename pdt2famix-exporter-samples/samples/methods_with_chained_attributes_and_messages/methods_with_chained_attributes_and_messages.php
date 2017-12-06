@@ -51,8 +51,3 @@ class MethodsWithChainedAttributesAndMessages {
 		return $this;
 	}
 }
-
-
-class TestClass_QW {
-	
-}

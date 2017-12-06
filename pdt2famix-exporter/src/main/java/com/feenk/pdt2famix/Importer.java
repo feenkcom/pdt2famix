@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -35,15 +34,18 @@ import org.eclipse.dltk.core.ModelException;
 import org.eclipse.dltk.core.index2.search.ISearchEngine.MatchRule;
 import org.eclipse.dltk.core.search.IDLTKSearchScope;
 import org.eclipse.dltk.core.search.SearchEngine;
-import org.eclipse.jface.text.IDocument;
+import org.eclipse.dltk.evaluation.types.SimpleType;
+import org.eclipse.dltk.evaluation.types.UnknownType;
+import org.eclipse.dltk.ti.types.ClassType;
+import org.eclipse.dltk.ti.types.IEvaluatedType;
 import org.eclipse.php.core.PHPVersion;
+import org.eclipse.php.core.ast.nodes.AST;
 import org.eclipse.php.core.ast.nodes.ASTNode;
 import org.eclipse.php.core.ast.nodes.ASTParser;
 import org.eclipse.php.core.ast.nodes.BindingResolver;
 import org.eclipse.php.core.ast.nodes.Bindings;
 import org.eclipse.php.core.ast.nodes.ClassDeclaration;
 import org.eclipse.php.core.ast.nodes.Comment;
-import org.eclipse.php.core.ast.nodes.DefaultBindingResolver;
 import org.eclipse.php.core.ast.nodes.Expression;
 import org.eclipse.php.core.ast.nodes.FieldAccess;
 import org.eclipse.php.core.ast.nodes.FormalParameter;
@@ -52,11 +54,12 @@ import org.eclipse.php.core.ast.nodes.ITypeBinding;
 import org.eclipse.php.core.ast.nodes.IVariableBinding;
 import org.eclipse.php.core.ast.nodes.Identifier;
 import org.eclipse.php.core.ast.nodes.InterfaceDeclaration;
-import org.eclipse.php.core.ast.nodes.MethodDeclaration;
 import org.eclipse.php.core.ast.nodes.MethodInvocation;
 import org.eclipse.php.core.ast.nodes.NamespaceDeclaration;
 import org.eclipse.php.core.ast.nodes.Program;
 import org.eclipse.php.core.ast.nodes.Reference;
+import org.eclipse.php.core.ast.nodes.ReflectionVariable;
+import org.eclipse.php.core.ast.nodes.Scalar;
 import org.eclipse.php.core.ast.nodes.SingleFieldDeclaration;
 import org.eclipse.php.core.ast.nodes.StaticConstantAccess;
 import org.eclipse.php.core.ast.nodes.StaticMethodInvocation;
@@ -64,22 +67,17 @@ import org.eclipse.php.core.ast.nodes.TraitDeclaration;
 import org.eclipse.php.core.ast.nodes.TypeBinding;
 import org.eclipse.php.core.ast.nodes.TypeDeclaration;
 import org.eclipse.php.core.ast.nodes.Variable;
+import org.eclipse.php.core.ast.nodes.VariableBase;
 import org.eclipse.php.core.ast.nodes.VariableBinding;
 import org.eclipse.php.core.ast.visitor.Visitor;
 import org.eclipse.php.core.compiler.PHPFlags;
 import org.eclipse.php.core.compiler.ast.nodes.NamespaceReference;
 import org.eclipse.php.internal.core.model.PHPModelAccess;
+import org.eclipse.php.internal.core.typeinference.PHPClassType;
 
-import com.dubture.doctrine.annotation.model.Annotation;
-import com.dubture.doctrine.annotation.model.AnnotationBlock;
-import com.dubture.doctrine.annotation.model.AnnotationClass;
-import com.dubture.doctrine.annotation.model.Argument;
-import com.dubture.doctrine.annotation.parser.AnnotationCommentParser;
-import com.dubture.doctrine.core.utils.AnnotationUtils;
 import com.feenk.pdt2famix.inphp.AstVisitor;
 import com.feenk.pdt2famix.model.famix.Access;
 import com.feenk.pdt2famix.model.famix.AnnotationInstance;
-import com.feenk.pdt2famix.model.famix.AnnotationInstanceAttribute;
 import com.feenk.pdt2famix.model.famix.AnnotationType;
 import com.feenk.pdt2famix.model.famix.AnnotationTypeAttribute;
 import com.feenk.pdt2famix.model.famix.Attribute;
@@ -112,7 +110,10 @@ public class Importer {
 	 
 	private static final char NAME_SEPARATOR = '$';
 	private static final char NAMESPACE_SEPARATOR = NamespaceReference.NAMESPACE_SEPARATOR;
+	public static final String INITIALIZER_NAME = "<init>";
+	private static final String INITIALIZER_KIND = "initializer";
 	public static final String CONSTRUCTOR_KIND = "constructor";
+	public static final String CONSTRUCTOR_NAME = "__construct";
 	public static final String DEFAULT_NAMESPACE_NAME = "";
 	public static final String SYSTEM_NAMESPACE_NAME = "__SYSTEM__";
 	public static final String UNKNOWN_NAME = "__UNKNOWN__";
@@ -226,7 +227,6 @@ public class Importer {
 	
 	public Namespace ensureNamespaceFromNamespaceDeclaration(NamespaceDeclaration declaration) {
 //		String sourceIdentifier = getCurrentSourceModel().getHandleIdentifier();
-		IDocument document;
 		String namespaceQualifiedName = declaration.getName() == null ? DEFAULT_NAMESPACE_NAME : declaration.getName().getName();
 		return ensureNamespaceNamed(namespaceQualifiedName);
 	}
@@ -279,7 +279,7 @@ public class Importer {
 	
 	private Type protectedEnsureTypeFromTypeBinding(ITypeBinding binding, String debugData) {
 		if (binding == null) {
-			logNullBinding("type binding resolving", debugData, 0);
+			logNullBinding("type binding resolving", debugData);
 			return unknownType();
 		}
 		if (isValidTypeBinding(binding) == false) {
@@ -290,10 +290,6 @@ public class Importer {
 	}
 	
 	public boolean isValidTypeBinding(ITypeBinding binding) {
-		if (binding == null) {
-			logNullBinding("type binding resolving", "", 0);
-			return false;
-		}
 		if ((binding.getPHPElement() != null && binding.getPHPElement() == currentSourceModel)) {
 			return false;
 		}
@@ -304,7 +300,7 @@ public class Importer {
 		return ensureTypeFromTypeBinding(binding, null);
 	}
 	
-	public Type ensureTypeFromTypeBinding(ITypeBinding binding, ASTNode astNode) {
+	public Type ensureTypeFromTypeBinding(ITypeBinding binding, TypeDeclaration typeDeclaration) {
 		// The implementation of #isUnknown is broken in the binging. 
 		// It should be an unknown binding also if the associated array 
 		// of elements has size 0 (now only if it's null)
@@ -320,7 +316,7 @@ public class Importer {
 		if (types.has(qualifiedName)) { 
 			return types.named(qualifiedName); };
 			
-		
+		ASTNode astNode = typeDeclaration;
 		if (astNode == null && binding.getPHPElement() instanceof IType) {
 			ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1, ((IType)binding.getPHPElement()).getSourceModule());
 			try {
@@ -469,15 +465,6 @@ public class Importer {
 	}
 
 	/**
-	 * When we cannot resolve the binding of the superclass of a class declaration,
-	 * we still want to create a {@link Type} with the best available information
-	 * from {@link org.eclipse.jdt.core.dom.Type}
-	 */
-//	public Inheritance createInheritanceFromSubtypeToSuperDomType(Type famixSubType, org.eclipse.jdt.core.dom.Type type) {
-//		return createInheritanceFromSubtypeToSuperType(famixSubType, ensureTypeFromDomType(type));
-//	}
-
-	/**
 	 * We use this one when we have the super type
 	 */
 	private Inheritance createInheritanceFromSubtypeToSuperType(Type subType, Type superType) {
@@ -507,44 +494,75 @@ public class Importer {
 		return ensureMethodFromMethodBinding(methodBinding, (Type) topOfContainerStack());
 	}
 	
-	public Method ensureMethodFromMethodBinding(IMethodBinding binding) {
+	public Method ensureMethodFromMethodBinding(IMethodBinding methodBinding, BindingResolver bindingResolver) {
 		/*	JDT2FAMIX: binding.getDeclaringClass() might be null when you invoke a method from a class that is not in the path
 			It looks like calling getMethodDeclaration is more robust. */
 		/* In PDT  getMethodDeclaration() does not exist in the method binding /*/
 		
-		ITypeBinding classBinding = binding.getDeclaringClass();
-		Type famixClassType;
-		if (classBinding == null || (classBinding.getPHPElement() != null && classBinding.getPHPElement() == this.currentSourceModel)) {
+		ITypeBinding classBinding = methodBinding.getDeclaringClass();
+		Type famixClassType = null;
+		if (classBinding == null || (classBinding.getPHPElement() != null && classBinding.getPHPElement() == this.currentSourceModel) ) {
 			// Sometimes in the parser the type containing a library method 
 			// does not resolve correcly: if we resolve the binding of the type we 
 			// get the current source module.
 			// If we encounter that then we just use the unknown type.
-			logInvalidBinding("Method binding", binding);
-			famixClassType = unknownType();
+			
+			IModelElement parentModelElement = methodBinding.getPHPElement().getParent();
+			if (parentModelElement.getElementType() == IModelElement.TYPE) {
+				ITypeBinding computedClassBinding = createTypeBinding((IType)parentModelElement, bindingResolver);
+				famixClassType = ensureTypeFromTypeBinding(computedClassBinding);
+			} 
+			if (famixClassType == null) {
+				logNullBinding("Method binding", methodBinding.getName());
+				famixClassType = unknownType();
+			}
 		} else {
 			famixClassType = ensureTypeFromTypeBinding(classBinding);
 		}
 		
-		return ensureMethodFromMethodBinding(binding, famixClassType);
+		return ensureMethodFromMethodBinding(methodBinding, famixClassType);
 	}
 	
-//	public Method ensureMethodFromMethodDeclaration(MethodDeclaration methodDeclarationNode) {
-//		StringJoiner signatureJoiner = new StringJoiner(", ", "(", ")");
-//		methodDeclarationNode.getFunction().formalParameters()
-//			.stream()
-//			.forEach( p -> signatureJoiner.add(p.getParameterName()) );
-//		String methodName = methodDeclarationNode.getFunction().getFunctionName().toString();
-//		String signature = methodName + signatureJoiner.toString();		
-//		return ensureBasicMethod(
-//				methodName, 
-//				signature, 
-//				(Type) topOfContainerStack(),
-//				m -> setUpMethodFromMethodDeclaration(m, node));
-//	}
+	public Method ensureConstructorForTypeBinding(ITypeBinding constructorClassTypeBinding, BindingResolver bindingResolver) {		
+		Type classType = safeEnsureTypeFromTypeBinding(constructorClassTypeBinding, bindingResolver, "Constructor type");
+		String constructorKey = formMethodKeyFrom(constructorClassTypeBinding.getKey(), CONSTRUCTOR_NAME);
+		
+		Method constructorMethod = ensureBasicMethod(
+				CONSTRUCTOR_NAME, 
+				constructorKey, 
+				CONSTRUCTOR_NAME+"()", 
+				classType, 
+				famixMethod -> setUpImplicitConstructorMethod(famixMethod));
+		return constructorMethod;
+	}
+	
+	private void setUpImplicitConstructorMethod(Method famixMethod) {
+		famixMethod.setKind(CONSTRUCTOR_KIND);
+		famixMethod.addModifiers("public");
+	}
+	
+	public Method ensureInitializerMethod() {
+		String parentTypeKey = this.entitiesToKeys.get(topOfContainerStack());
+		return ensureBasicMethod(
+				INITIALIZER_NAME, 
+				formMethodKeyFrom(parentTypeKey, INITIALIZER_NAME),
+				null, 
+				(Type) topOfContainerStack(),
+				famixMethod -> setUpInitializerMethod(famixMethod));
+	}
+	
+	private void setUpInitializerMethod(Method method) {
+		method.setKind(INITIALIZER_KIND);
+		method.setIsStub(false);
+	}
+	
+	private String formMethodKeyFrom(String typeKey, String methodName) {
+		return typeKey + "~" + methodName;
+	}
 	
 	private Method ensureMethodFromMethodBinding(IMethodBinding methodBinding, Type parentType) {
 		String methodName = methodBinding.getName();
-
+		
 //		// For library methods the only way to get the actual signature is to obtain the actual AST nodes.
 //		// To do need to obtain the actual AST.
 //		// Before doing this we should check if the method is actually a stub: is the path of the container file in
@@ -634,20 +652,21 @@ public class Importer {
 		ITypeBinding inferredTypeBinding = formalParameter.getParameterNameIdentifier().resolveTypeBinding();
 		Expression declatedType = formalParameter.getParameterType();
 		Expression defaultValue = formalParameter.getDefaultValue();
+		BindingResolver bindingResolver = formalParameter.getAST().getBindingResolver();
 		
 		if (inferredTypeBinding != null) {
-			possibleTypes.add(protectedEnsureTypeFromTypeBinding(inferredTypeBinding, "Parameter type "+qualifiedName));
+			possibleTypes.add(safeEnsureTypeFromTypeBinding(inferredTypeBinding, bindingResolver, "Parameter type "+qualifiedName));
 		}
 		if (declatedType != null) {
 			ITypeBinding resolvedTypeBinding = declatedType.resolveTypeBinding();
 			if (resolvedTypeBinding != null) {
-				possibleTypes.add(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding, "Parameter resolved type "+qualifiedName));
+				possibleTypes.add(safeEnsureTypeFromTypeBinding(resolvedTypeBinding, bindingResolver, "Parameter resolved type "+qualifiedName));
 			}	
 		}
 		if (defaultValue != null) {
 			ITypeBinding resolvedTypeBinding = defaultValue.resolveTypeBinding();
 			if (resolvedTypeBinding != null) {
-				possibleTypes.add(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding, "Parameter default type "+qualifiedName));
+				possibleTypes.add(safeEnsureTypeFromTypeBinding(resolvedTypeBinding, bindingResolver, "Parameter default type "+qualifiedName));
 			}
 		}
 		
@@ -658,6 +677,57 @@ public class Importer {
 			parameter.setDeclaredType(parameterType.get());
 		}
 		return parameter;
+	}
+	
+	private Type safeEnsureTypeFromTypeBinding(ITypeBinding binding, BindingResolver bindingResolver, String debugData) {
+		
+		if (binding == null) {
+			logNullBinding("type binding resolving: ", debugData);
+			return unknownType();
+		}
+		
+		if (isValidTypeBinding(binding) == false) {
+			IEvaluatedType evaluatedType = binding.getEvaluatedType();
+			if (evaluatedType instanceof UnknownType) {
+				logInvalidBinding("type binding resolving [unknown]: ", debugData);
+				return unknownType();
+			}
+			
+			// Check if we have a primitive type.
+			if (evaluatedType instanceof SimpleType || evaluatedType.getTypeName().equals("array") || evaluatedType.getTypeName().equals("null")) {
+				String qualifiedName;
+				Type famixType = null;
+
+				if (binding.isArray() || evaluatedType.getTypeName().equals("array")) {
+					qualifiedName = "array";
+				} else {
+					qualifiedName = binding.getEvaluatedType().getTypeName();
+				}
+				// Manually set the type here
+				if (types.has(qualifiedName)) { 
+					return types.named(qualifiedName); };
+				
+				famixType = new PrimitiveType();
+				famixType.setName(qualifiedName);
+				famixType.setIsStub(true);	
+				famixType.setContainer(systemNamespace());
+				
+				types.add(qualifiedName, famixType);
+				entitiesToKeys.put(famixType, qualifiedName);
+				return famixType;
+			} else if (evaluatedType instanceof ClassType) {
+				ITypeBinding computedTypeBinding = createTypeBinding(evaluatedType.getTypeName(), bindingResolver);
+				if (computedTypeBinding != null) {
+					return ensureTypeFromTypeBinding(computedTypeBinding);
+				}
+			} 
+			//TODO: handle MultiTypeType
+			
+			logInvalidBinding("type binding resolving [invalid]: ", debugData);
+			return unknownType();
+		}
+		
+		return ensureTypeFromTypeBinding(binding);
 	}
 	
 	private boolean isUnknowFAMIXType(Type type) {
@@ -712,7 +782,7 @@ public class Importer {
 			// attribute = ensureAttributeFromFieldDeclarationIntoParentType(fieldDeclaration);
 			throw new RuntimeException("Does it ever get here?");
 		} else {
-			attribute = ensureAttributeForVariableBinding(variableBinding);
+			attribute = ensureAttributeForVariableBinding(variableBinding, fieldDeclaration.getAST().getBindingResolver());
 		}
 		
 		// When the type of an attribute is computed from a type binding, resolving the type of the attribute
@@ -724,7 +794,7 @@ public class Importer {
 			// Sometimes in the parser the code "public $list = [];" or "private $languageCode = 'EN';" 
 			// does not resolve correcly the type of the value. If we resolve the binding of the type we 
 			// get the current source module. To avoid errors we use the protected call.
-			declaredType = protectedEnsureTypeFromTypeBinding(resolvedTypeBinding, "Field declaration");
+			declaredType = safeEnsureTypeFromTypeBinding(resolvedTypeBinding, fieldDeclaration.getAST().getBindingResolver(), "Field declaration");
 		}
 		attribute.setDeclaredType(declaredType); 
 		attribute.setIsStub(true);
@@ -803,7 +873,7 @@ public class Importer {
 		
 		if (expression != null) {
 			ITypeBinding resolvedTypeBinding = expression.resolveTypeBinding();
-			attribute.setDeclaredType(protectedEnsureTypeFromTypeBinding(resolvedTypeBinding, "constant value")); 
+			attribute.setDeclaredType(safeEnsureTypeFromTypeBinding(resolvedTypeBinding, identifier.getAST().getBindingResolver(), "constant value")); 
 		}
 		
 		return attribute;
@@ -815,7 +885,7 @@ public class Importer {
 	 * 
 	 * @return the Famix attribute associated to the given variable binding.
 	 */
-	private Attribute ensureAttributeForVariableBinding(IVariableBinding variableBinding) {
+	private Attribute ensureAttributeForVariableBinding(IVariableBinding variableBinding, BindingResolver bindingResolver) {
 		String qualifiedName = variableBinding.getKey();
 		if (attributes.has(qualifiedName)) 
 			return attributes.named(qualifiedName);
@@ -826,7 +896,7 @@ public class Importer {
 		if (parentTypeBinding == null)
 			parentType = unknownType();
 		else 
-			parentType = ensureTypeFromTypeBinding(parentTypeBinding);
+			parentType = safeEnsureTypeFromTypeBinding(parentTypeBinding, bindingResolver, "Variable type binding");
 		
 		Type attributeType = null;
 		if (variableBinding.getType() != null)  { 
@@ -859,65 +929,79 @@ public class Importer {
 	// INVOCATIONS
 	
 	public Invocation createInvocationFromMethodInvocation(MethodInvocation methodInvocation) {	
-		Invocation invocation = new Invocation();
-		invocation.setSender((Method) topOfContainerStack()); 
-		
 		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
+		Invocation invocation = createInvocationFromMethodBinding(methodBinding, methodInvocation);
+				
 		if (methodBinding != null) {
 			Expression dispatcherExpression = methodInvocation.getDispatcher();
 			if (dispatcherExpression != null) {
 				invocation.setReceiver(ensureStructuralEntityFromExpression(dispatcherExpression));
 			}
-			//TODO: If the binding is null we can still get the name if the method
-			invocation.addCandidates(ensureMethodFromMethodBinding(methodBinding)); 
 		}
-							 
-		try {
-			invocation.setSignature(methodInvocation.getProgramRoot().getSourceModule().getSource().substring(
-					methodInvocation.getStart(),
-					methodInvocation.getEnd()));
-		} catch (ModelException e) {
-			e.printStackTrace();
-		}
-		repository.add(invocation);
+
 		return invocation;
 	}
 	
 	public Invocation createInvocationFromMethodInvocation(StaticMethodInvocation methodInvocation) {	
-		Invocation invocation = new Invocation();
-		invocation.setSender((Method) topOfContainerStack()); 
-		
 		IMethodBinding methodBinding = methodInvocation.resolveMethodBinding();
+		Invocation invocation = createInvocationFromMethodBinding(methodBinding, methodInvocation);
+		
 		if (methodBinding != null) {
 			Expression dispatcherExpression = methodInvocation.getClassName();
 			if (dispatcherExpression != null) {
 				invocation.setReceiver(ensureStructuralEntityFromExpression(dispatcherExpression));
 			}
-			//TODO: If the binding is null we can still get the name if the method
-			invocation.addCandidates(ensureMethodFromMethodBinding(methodBinding)); 
 		}
 							 
-		try {
-			invocation.setSignature(methodInvocation.getProgramRoot().getSourceModule().getSource().substring(
-					methodInvocation.getStart(),
-					methodInvocation.getEnd()));
-		} catch (ModelException e) {
-			e.printStackTrace();
-		}
 		repository.add(invocation);
 		return invocation;
 	}
 	
+	public Invocation createInvocationFromMethodBinding(IMethodBinding methodBinding, ASTNode invocationNode) {		
+		Invocation invocation = new Invocation();
+		invocation.setSender((Method) topOfContainerStack()); 
+		if (methodBinding != null)
+			invocation.addCandidates(ensureMethodFromMethodBinding(methodBinding, invocationNode.getAST().getBindingResolver()));  
+		invocation.setSignature(computeSignatureFromInvocatioNode(invocationNode));
+		repository.add(invocation);
+		return invocation;
+	}
+	
+	public Invocation createInvocationToFamixMethod(Method invokedMethod, ASTNode invocationNode) {
+		Invocation invocation = new Invocation();
+		invocation.setSender((Method) topOfContainerStack()); 
+		invocation.addCandidates(invokedMethod); 
+		invocation.setSignature(computeSignatureFromInvocatioNode(invocationNode));
+		repository.add(invocation);
+		return invocation;
+	}
+	
+	private String computeSignatureFromInvocatioNode(ASTNode invocationNode) {
+		try {
+			return invocationNode.getProgramRoot().getSourceModule().getSource().substring(
+					invocationNode.getStart(),
+					invocationNode.getEnd());
+		} catch (ModelException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 	
 	public StructuralEntity ensureStructuralEntityFromExpression(Expression expression) {
 		IVariableBinding variableBinding = null;
 		if (expression.getClass().equals(Variable.class)) {
 			variableBinding = ((Variable) expression).resolveVariableBinding();
 		} else if (expression instanceof FieldAccess) {
+			// For FieldAccess we need to make sure the type containing the field can be resolved.
+			// If the type cannot be resolved then resolveFieldBinding() will throw an exception.
 			ITypeBinding contaierTypeBinding = ((FieldAccess) expression).getDispatcher().resolveTypeBinding();
-			if ( contaierTypeBinding == null || (contaierTypeBinding.getPHPElement() == this.currentSourceModel)) {
-				// Like in a few other cases the binding here gets resolved to the wrong module.
-				logInvalidBinding("Expression declaration", expression);
+			if (contaierTypeBinding == null) {
+				logNullBinding("Field access", this.getNameFromExpression(((FieldAccess) expression).getField()));
+				return null;
+			}
+			// If the binding for the type containing the field is invalid use a custom solution for creating the variable binding.
+			if (contaierTypeBinding.getPHPElement() == this.currentSourceModel) {
+				variableBinding = computeVariableBindingFromInvalidParentBinding((FieldAccess) expression, contaierTypeBinding);
 			} else {
 				variableBinding = ((FieldAccess) expression).resolveFieldBinding();
 			}
@@ -925,7 +1009,7 @@ public class Importer {
 		
 		if (variableBinding != null) {
 			if (variableBinding.isField())
-				return ensureAttributeForVariableBinding(variableBinding);
+				return ensureAttributeForVariableBinding(variableBinding, expression.getAST().getBindingResolver());
 			if (variableBinding.isParameter() || (variableBinding.isLocal() && isVariableMethodParameter(variableBinding) ) )
 				return ensureParameterWithinCurrentMethodFromVariableBinding(variableBinding);
 //			if (variableBinding.isLocal()) 
@@ -934,6 +1018,53 @@ public class Importer {
 		return null;
 	}
 	
+	/**
+	 * For field bindings where the type binding containing the field is invalid attemp to compute a variable binding
+	 * using the evaluated type associated with the type binding. 
+	 */
+	private IVariableBinding computeVariableBindingFromInvalidParentBinding(FieldAccess fieldAccess, ITypeBinding fieldParent) {
+		ITypeBinding computedTypeBinding = createTypeBinding(
+				fieldParent.getEvaluatedType().getTypeName(), 
+				fieldAccess.getAST().getBindingResolver());
+		if (computedTypeBinding != null) {
+			// Use a custom resolveField method instead of callinf #resolveFieldBinding() on the FieldAccess.
+			return resolveField((FieldAccess) fieldAccess, computedTypeBinding);
+		}
+		logInvalidBinding("Field access", getNameFromExpression(fieldAccess.getField()));
+		return null;
+	}
+	
+	/**
+	 * I am a copy of the #resolveField() method from the BindingResolver, that instead of using `fieldAccess.getDispatcher().resolveTypeBinding()`
+	 * to compute the type containing the field uses an already compute type. 
+	 * 
+	 * @see {@link FieldAccess#resolveFieldBinding()}
+	 */
+	private IVariableBinding resolveField(FieldAccess fieldAccess, ITypeBinding containerTypeBinding) {
+		final VariableBase member = fieldAccess.getMember();
+		if (member.getType() == ASTNode.VARIABLE) {
+			Variable var = (Variable) member;
+			if (!var.isDollared() && var.getName() instanceof Identifier) {
+				Identifier id = (Identifier) var.getName();
+				final String fieldName = "$" + id.getName(); //$NON-NLS-1$
+				//final ITypeBinding type = fieldAccess.getDispatcher().resolveTypeBinding(); 
+				final ITypeBinding type = containerTypeBinding;
+				
+				// There needs to be a check here to verify if the superclass has a valid binding or not.
+				if (type.getSuperclass() == null) {
+					return Bindings.findFieldInHierarchy(type, fieldName);
+				} else if (isValidTypeBinding(type.getSuperclass())) {
+					return Bindings.findFieldInHierarchy(type, fieldName);
+				} else {
+					logInvalidBinding("Field access [type binding superclass] ", getNameFromExpression(fieldAccess.getField()));
+					return null;
+				}
+			}
+		}
+		return null;
+	}
+
+	
 	// ACCESSES
 	
 	public Access createAccessFromFieldAccessNode(FieldAccess fieldAccess) {
@@ -941,12 +1072,17 @@ public class Importer {
 		IVariableBinding variableBinding;
 		
 		// If the type binding is not valid there will be a cast exception when resoving the variable binding.
+		if (typeBinding == null) {
+			logNullBinding("Field access", getNameFromExpression(fieldAccess.getField()));
+			return new Access();
+		}
 		if (isValidTypeBinding(typeBinding) == false) {
+			logInvalidBinding("Field access", getNameFromExpression(fieldAccess.getField()));
 			return new Access();
 		}
 		variableBinding = fieldAccess.resolveFieldBinding();
 		if (variableBinding != null) {
-			return createAccessFromVariableBinding(variableBinding);
+			return createAccessFromVariableBinding(variableBinding, fieldAccess.getAST().getBindingResolver());
 		} else {
 			// One reason why the access is not resolved is because it is an access to a variable defined in a trait.
 			// fieldAccess.getDispatcher().resolveTypeBinding().getTraitList(false, getNameFromExpression(fieldAccess.getField()), true);
@@ -965,19 +1101,24 @@ public class Importer {
 		IVariableBinding variableBinding;
 		
 		// If the type binding is not valid there will be a cast exception when resoving the variable binding.
+		if (typeBinding == null) {
+			logNullBinding("Constant access", constantAccess.getConstant().getName());
+			return new Access();
+		}
 		if (isValidTypeBinding(typeBinding) == false) {
+			logInvalidBinding("Constant access", constantAccess.getConstant().getName());
 			return new Access();
 		}
 		
 		variableBinding = constantAccess.resolveFieldBinding();
 		if (variableBinding != null) {
-			return createAccessFromVariableBinding(variableBinding);
+			return createAccessFromVariableBinding(variableBinding, constantAccess.getAST().getBindingResolver());
 		} else {
 			return new Access();
 		}
 	}
 	
-	private Access createAccessFromVariableBinding(IVariableBinding variableBinding) {
+	private Access createAccessFromVariableBinding(IVariableBinding variableBinding, BindingResolver bindingResolver) {
 		Access access = new Access();
 		StructuralEntity variable = unknownVariable();
 		
@@ -987,7 +1128,7 @@ public class Importer {
 			//we only consider fields and parameters ?
 			return access;
 		if (isField) 
-			variable = ensureAttributeForVariableBinding(variableBinding);
+			variable = ensureAttributeForVariableBinding(variableBinding, bindingResolver);
 		else if (isParameter)
 			variable = ensureParameterWithinCurrentMethodFromVariableBinding(variableBinding);
 		
@@ -1070,7 +1211,13 @@ public class Importer {
 			Variable variable = (Variable) expression;
 			final Identifier variableName = (Identifier) variable.getName();
 			return (variable.isDollared() ? "$" : "") + variableName.getName();
-		}
+		
+		case ASTNode.REFLECTION_VARIABLE:
+			ReflectionVariable reflectionVariable = (ReflectionVariable)expression;
+			if (reflectionVariable.getName().getType() == ASTNode.SCALAR) {
+				return ((Scalar) reflectionVariable.getName()).getStringValue();
+			}
+		}	
 		throw new IllegalStateException();
 	}
 	
@@ -1149,15 +1296,14 @@ public class Importer {
 		
 	// LOGGING
 
-	public void logNullBinding(String string, Object extraData, int lineNumber) {
-		logger.error("unresolved " + string +
+	public void logNullBinding(String string, String extraData) {
+		logger.error("binding null: " + string +
 				" - " + extraData +
-				" - " + getCurrentFilePath() +
-				" - line " + lineNumber);
+				" - " + getCurrentFilePath());
 	}	
 	
-	public void logInvalidBinding(String bindingType, Object extraData) {
-		logger.error("unresolved " + bindingType +
+	public void logInvalidBinding(String bindingType, String extraData) {
+		logger.error("binding invalid: " + bindingType +
 				" - " + extraData +
 				" - " + getCurrentFilePath());
 	}	
@@ -1296,5 +1442,20 @@ public class Importer {
 					})
 				.findFirst()
 				.orElse(null);
+	}
+	
+
+	public ITypeBinding createTypeBinding(final IType type, final BindingResolver bindingResolver) {
+		return new TypeBinding(bindingResolver, PHPClassType.fromIType(type), type);
+	}
+	
+	public ITypeBinding createTypeBinding(final String typeName, final BindingResolver bindingResolver) {
+		String relativeTypeName = typeName.startsWith("\\") ? typeName.replaceFirst("\\\\", "") : typeName;
+		IDLTKSearchScope searchScope = SearchEngine.createSearchScope(this.getCurrentSourceModel().getScriptProject());
+		IType[] types = PHPModelAccess.getDefault().findTypes(relativeTypeName, MatchRule.EXACT, 0, 0, searchScope, new NullProgressMonitor());
+		if (types.length == 1) {
+			return createTypeBinding(types[0], bindingResolver);
+		}
+		return null;
 	}
 }

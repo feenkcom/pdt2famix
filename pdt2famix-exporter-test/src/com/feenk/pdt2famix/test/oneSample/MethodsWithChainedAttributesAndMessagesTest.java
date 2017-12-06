@@ -19,9 +19,9 @@ public class MethodsWithChainedAttributesAndMessagesTest extends OneSampleTestCa
 	@Test
 	public void testModelSize() {
 		assertEquals(1, importer.namespaces().size());
-		assertEquals(2, importer.types().size());
-		assertEquals(8, importer.methods().size());
-		assertEquals(6, importer.currentInvocations().size());
+		assertEquals(1, importer.types().size());
+		assertEquals(8+2, importer.methods().size());
+		assertEquals(6+4, importer.currentInvocations().size());
 		assertEquals(6, importer.currentAccesses().size());
 		assertEquals(4, importer.attributes().size());
 		assertEquals(0, importer.parameters().size());

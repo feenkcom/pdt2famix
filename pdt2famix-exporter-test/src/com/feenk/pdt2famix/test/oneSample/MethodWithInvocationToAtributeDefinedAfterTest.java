@@ -18,8 +18,8 @@ public class MethodWithInvocationToAtributeDefinedAfterTest extends OneSampleTes
 	public void testModelSize() {
 		assertEquals(1, importer.namespaces().size());
 		assertEquals(1, importer.types().size());
-		assertEquals(3, importer.methods().size());
-		assertEquals(2, importer.currentInvocations().size());
+		assertEquals(3+2, importer.methods().size());
+		assertEquals(2+2, importer.currentInvocations().size());
 		assertEquals(2, importer.currentAccesses().size());
 		assertEquals(2, importer.attributes().size());
 		assertEquals(0, importer.parameters().size());

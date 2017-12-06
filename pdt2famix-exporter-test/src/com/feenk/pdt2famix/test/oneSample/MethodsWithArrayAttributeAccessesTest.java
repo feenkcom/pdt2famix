@@ -19,7 +19,7 @@ public class MethodsWithArrayAttributeAccessesTest extends OneSampleTestCase {
 	public void testModelSize() {
 		assertEquals(2, importer.namespaces().size());
 		assertEquals(3, importer.types().size());
-		assertEquals(5, importer.methods().size());
+		assertEquals(5+1, importer.methods().size());
 		assertEquals(6, importer.attributes().size());
 		assertEquals(0, importer.currentInvocations().size());
 		assertEquals(8, importer.currentAccesses().size());

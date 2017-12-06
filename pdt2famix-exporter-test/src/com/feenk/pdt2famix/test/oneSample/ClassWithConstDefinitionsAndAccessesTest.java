@@ -20,9 +20,9 @@ public class ClassWithConstDefinitionsAndAccessesTest extends OneSampleTestCase 
 	public void testModelSize() {
 		assertEquals(2, importer.namespaces().size());
 		assertEquals(5, importer.types().size());
-		assertEquals(4, importer.methods().size());
+		assertEquals(4+2, importer.methods().size());
 		assertEquals(6, importer.attributes().size());
-		assertEquals(0, importer.currentInvocations().size());
+		assertEquals(1, importer.currentInvocations().size());
 		assertEquals(3, importer.currentAccesses().size()); // Only accesses using :: are resolved
 		assertEquals(0, importer.parameters().size());
 	}

@@ -17,8 +17,8 @@ public class MethodInvocationsWithArgumentsTest extends OneSampleTestCase {
 	public void testModelSize() {
 		assertEquals(2+1, importer.namespaces().size());
 		assertEquals(3+1, importer.types().size());
-		assertEquals(6, importer.methods().size());
-		assertEquals(4, importer.currentInvocations().size());
+		assertEquals(6+2, importer.methods().size());
+		assertEquals(4+2, importer.currentInvocations().size());
 		assertEquals(1, importer.currentAccesses().size());
 		assertEquals(1, importer.attributes().size());
 		assertEquals(6, importer.parameters().size());

@@ -21,8 +21,8 @@ public class MethodsWithLocalInvocationsToSelfAttributesTest extends OneSampleTe
 	public void testModelSize() {
 		assertEquals(1, importer.namespaces().size());
 		assertEquals(1, importer.types().size());
-		assertEquals(8, importer.methods().size());
-		assertEquals(7, importer.currentInvocations().size());
+		assertEquals(8+2, importer.methods().size());
+		assertEquals(7+6, importer.currentInvocations().size());
 		assertEquals(7, importer.currentAccesses().size());
 		assertEquals(6, importer.attributes().size());
 	}
