@@ -7,6 +7,8 @@ import org.eclipse.core.runtime.Status;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
+import com.feenk.pdt2famix.ExternalLogger;
+
 public class Activator implements BundleActivator {
 
 	// The plug-in ID
@@ -14,8 +16,9 @@ public class Activator implements BundleActivator {
 		
 	// The shared instance
 	private static Activator plugin;
-	
 	private static BundleContext context;
+	
+	private ExternalLogger externalLogger;
 
 	static BundleContext getContext() {
 		return context;
@@ -28,6 +31,7 @@ public class Activator implements BundleActivator {
 	public void start(BundleContext bundleContext) throws Exception {
 		Activator.context = bundleContext;
 		plugin = this;
+		externalLogger = new ExternalLogger();
 	}
 
 	/*
@@ -52,12 +56,19 @@ public class Activator implements BundleActivator {
 		return plugin;
 	}
 	
+	public void resetExternalLogFiles () {
+		externalLogger.resetExternalLogFiles();
+	}
 	
 	public void trace(String message) {
-		this.getLog().log(new Status(IStatus.INFO, Activator.PLUGIN_ID, message));
+		System.out.println(message);
+		externalLogger.logTraceMessage(message, true);
+		//this.getLog().log(new Status(IStatus.INFO, Activator.PLUGIN_ID, message));
 	}
 
 	public void error(String message) {
+		//System.out.println(message);
+		externalLogger.logErrorMessage(message, true);
 		this.getLog().log(new Status(IStatus.ERROR, Activator.PLUGIN_ID, message));
 	}
 

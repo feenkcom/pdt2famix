@@ -1310,16 +1310,32 @@ public class Importer {
 		
 	
 	// OPENING
-
 	
 	public void run(IScriptProject projectPHP, List<String> allowedPaths, boolean exportAST) throws Exception{
 		AstVisitor visitor = new AstVisitor(this);
+		List<String> updatedPaths = updatePathForProject(projectPHP, allowedPaths);		
 		for (IProjectFragment projectFragment : projectPHP.getProjectFragments()) {
-			logger.trace("IProjectFragment: "+projectFragment.getPath());
+			logger.trace("IProjectFragment: " + projectFragment.getPath());
 			if (projectFragment.isExternal() == false) {
-				processModelElement(projectFragment, visitor, allowedPaths, exportAST);
+				processModelElement(projectFragment, visitor, updatedPaths, exportAST);
 			}
 		}
+	}
+	
+	private List<String> updatePathForProject(IScriptProject projectPHP, List<String> allowedPaths) {
+		String projectPath = projectPHP.getPath().toString();
+		List<String> updatedPaths = allowedPaths.stream()
+				.map(aPath -> {
+					String updatedPath = aPath;
+					if (updatedPath.startsWith("/") == false) {
+						updatedPath = "/" + updatedPath;
+					}
+					if (updatedPath.endsWith("/") == false) {
+						updatedPath = updatedPath + "/";
+					}
+					return projectPath + updatedPath; })
+				.collect(Collectors.toList());
+		return updatedPaths;
 	}
 	
 	private void processModelElement(IModelElement modelElement, Visitor visitor, List<String> allowedPaths, boolean exportAST) throws Exception {
@@ -1330,7 +1346,7 @@ public class Importer {
 				.findAny()
 				.isPresent();
 			if (allowedPaths.isEmpty() || isPresent) {
-				//logger.trace("ISourceModule: "+modelElement.getElementName()+" "+modelElement.getPath());
+				//logger.trace("ISourceModule: "+modelElement.getElementName()+" - "+modelElement.getPath());
 				setCurrentSourceModel((ISourceModule)modelElement);
 				
 				ASTParser parser = ASTParser.newParser(PHPVersion.PHP7_1, ((ISourceModule)modelElement));
