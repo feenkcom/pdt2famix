@@ -7,7 +7,7 @@
          point="org.eclipse.core.runtime.applications">
       <application>
          <run
-               class="com.feenk.pdt2famix.exporter.client.ExportModelApplication">
+               class="com.feenk.pdt2famix.client.ExportModelApplication">
          </run>
       </application>
    </extension>

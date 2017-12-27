@@ -1,4 +1,4 @@
-package com.feenk.pdt2famix.exporter.client;
+package com.feenk.pdt2famix.client;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;

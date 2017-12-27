@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: pdt2famix-exporter-client
-Bundle-SymbolicName: com.feenk.pdt2famix.exporter.client;singleton:=true
+Bundle-SymbolicName: com.feenk.pdt2famix.client;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Activator: pdt2famix_exporter_client.Activator
 Require-Bundle: org.eclipse.core.runtime,
