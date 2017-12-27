@@ -1,12 +1,8 @@
 package pdt2famix_plugin;
 
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
-
-import com.feenk.pdt2famix.ExternalLogger;
 
 /**
  * The activator class controls the plug-in life cycle
@@ -18,9 +14,7 @@ public class Activator extends AbstractUIPlugin {
 
 	// The shared instance
 	private static Activator plugin;
-	
-	private ExternalLogger externalLogger;
-	
+		
 	/**
 	 * The constructor
 	 */
@@ -34,7 +28,6 @@ public class Activator extends AbstractUIPlugin {
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
 		plugin = this;
-		externalLogger = new ExternalLogger();
 	}
 
 	/*
@@ -64,20 +57,5 @@ public class Activator extends AbstractUIPlugin {
 	 */
 	public static ImageDescriptor getImageDescriptor(String path) {
 		return imageDescriptorFromPlugin(PLUGIN_ID, path);
-	}
-	
-	public void resetExternalLogFiles () {
-		externalLogger.resetExternalLogFiles();
-	}
-	
-	public void trace(String message) {
-		System.out.println(message);
-		externalLogger.logTraceMessage(message, true);
-		this.getLog().log(new Status(IStatus.INFO, Activator.PLUGIN_ID, message));
-	}
-
-	public void error(String message) {
-		externalLogger.logErrorMessage(message, true);
-		this.getLog().log(new Status(IStatus.ERROR, Activator.PLUGIN_ID, message));
 	}
 }

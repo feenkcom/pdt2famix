@@ -7,8 +7,8 @@ import java.util.HashSet;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.Importer;
-import com.feenk.pdt2famix.model.famix.Method;
+import com.feenk.pdt2famix.exporter.inphp.Importer;
+import com.feenk.pdt2famix.exporter.model.famix.Method;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class MethodsWithConstructorCallsTest extends OneSampleTestCase {

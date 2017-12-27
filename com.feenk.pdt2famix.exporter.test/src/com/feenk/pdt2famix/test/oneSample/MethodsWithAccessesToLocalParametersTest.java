@@ -4,8 +4,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.model.famix.Method;
-import com.feenk.pdt2famix.model.famix.Parameter;
+import com.feenk.pdt2famix.exporter.model.famix.Method;
+import com.feenk.pdt2famix.exporter.model.famix.Parameter;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class MethodsWithAccessesToLocalParametersTest extends OneSampleTestCase {

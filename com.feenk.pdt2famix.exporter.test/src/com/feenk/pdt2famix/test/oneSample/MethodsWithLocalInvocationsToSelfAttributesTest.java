@@ -6,9 +6,9 @@ import java.util.Collection;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.model.famix.Attribute;
-import com.feenk.pdt2famix.model.famix.Invocation;
-import com.feenk.pdt2famix.model.famix.Method;
+import com.feenk.pdt2famix.exporter.model.famix.Attribute;
+import com.feenk.pdt2famix.exporter.model.famix.Invocation;
+import com.feenk.pdt2famix.exporter.model.famix.Method;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class MethodsWithLocalInvocationsToSelfAttributesTest extends OneSampleTestCase {

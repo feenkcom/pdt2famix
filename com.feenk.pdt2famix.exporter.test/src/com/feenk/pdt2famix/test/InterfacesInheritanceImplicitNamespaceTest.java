@@ -4,8 +4,8 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.Importer;
-import com.feenk.pdt2famix.model.famix.Type;
+import com.feenk.pdt2famix.exporter.inphp.Importer;
+import com.feenk.pdt2famix.exporter.model.famix.Type;
 import com.feenk.pdt2famix.test.support.InPhpTestCase;
 
 public class InterfacesInheritanceImplicitNamespaceTest extends InPhpTestCase {

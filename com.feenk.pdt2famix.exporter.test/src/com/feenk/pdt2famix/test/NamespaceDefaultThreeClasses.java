@@ -2,7 +2,7 @@ package com.feenk.pdt2famix.test;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.Importer;
+import com.feenk.pdt2famix.exporter.inphp.Importer;
 import com.feenk.pdt2famix.test.support.InPhpTestCase;
 
 public class NamespaceDefaultThreeClasses  extends InPhpTestCase {

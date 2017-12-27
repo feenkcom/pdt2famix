@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.Importer;
+import com.feenk.pdt2famix.exporter.inphp.Importer;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class TraitInImplicitNamespaceTest extends OneSampleTestCase {

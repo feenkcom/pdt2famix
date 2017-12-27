@@ -30,23 +30,23 @@ import org.eclipse.jdt.launching.LibraryLocation;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
-import com.feenk.pdt2famix.AnnotationResolver;
-import com.feenk.pdt2famix.Importer;
-import com.feenk.pdt2famix.model.famix.Access;
-import com.feenk.pdt2famix.model.famix.AnnotationInstance;
-import com.feenk.pdt2famix.model.famix.AnnotationType;
-import com.feenk.pdt2famix.model.famix.Attribute;
-import com.feenk.pdt2famix.model.famix.BehaviouralEntity;
-import com.feenk.pdt2famix.model.famix.Inheritance;
-import com.feenk.pdt2famix.model.famix.Invocation;
-import com.feenk.pdt2famix.model.famix.Method;
-import com.feenk.pdt2famix.model.famix.NamedEntity;
-import com.feenk.pdt2famix.model.famix.Namespace;
-import com.feenk.pdt2famix.model.famix.Parameter;
-import com.feenk.pdt2famix.model.famix.StructuralEntity;
-import com.feenk.pdt2famix.model.famix.Trait;
-import com.feenk.pdt2famix.model.famix.TraitUsage;
-import com.feenk.pdt2famix.model.famix.Type;
+import com.feenk.pdt2famix.exporter.inphp.AnnotationResolver;
+import com.feenk.pdt2famix.exporter.inphp.Importer;
+import com.feenk.pdt2famix.exporter.model.famix.Access;
+import com.feenk.pdt2famix.exporter.model.famix.AnnotationInstance;
+import com.feenk.pdt2famix.exporter.model.famix.AnnotationType;
+import com.feenk.pdt2famix.exporter.model.famix.Attribute;
+import com.feenk.pdt2famix.exporter.model.famix.BehaviouralEntity;
+import com.feenk.pdt2famix.exporter.model.famix.Inheritance;
+import com.feenk.pdt2famix.exporter.model.famix.Invocation;
+import com.feenk.pdt2famix.exporter.model.famix.Method;
+import com.feenk.pdt2famix.exporter.model.famix.NamedEntity;
+import com.feenk.pdt2famix.exporter.model.famix.Namespace;
+import com.feenk.pdt2famix.exporter.model.famix.Parameter;
+import com.feenk.pdt2famix.exporter.model.famix.StructuralEntity;
+import com.feenk.pdt2famix.exporter.model.famix.Trait;
+import com.feenk.pdt2famix.exporter.model.famix.TraitUsage;
+import com.feenk.pdt2famix.exporter.model.famix.Type;
 
 public abstract class InPhpTestCase {
 	public static final String PROJECT_NAME = "com.feenk.pdt2famix.exporter.samples";
@@ -130,7 +130,7 @@ public abstract class InPhpTestCase {
 		annotationType = importer.types().named(annotationTypeIdentifier);
 
 		assertEquals(false, annotationType.getIsStub());
-		assertTrue(annotationType instanceof com.feenk.pdt2famix.model.famix.AnnotationType);
+		assertTrue(annotationType instanceof com.feenk.pdt2famix.exporter.model.famix.AnnotationType);
 	}
 
 	protected void assertAnnotationTagType() {
@@ -144,7 +144,7 @@ public abstract class InPhpTestCase {
 		assertEquals(true, annotationType.getIsStub());
 		assertEquals(importer.systemNamespace(), annotationType.getContainer());
 		assertEquals(annotationTagTypeName, annotationType.getName());
-		assertTrue(annotationType instanceof com.feenk.pdt2famix.model.famix.AnnotationType);
+		assertTrue(annotationType instanceof com.feenk.pdt2famix.exporter.model.famix.AnnotationType);
 	}
 
 	protected AnnotationInstance locateAnnotationInstanceInType(Type targetClass, AnnotationType annotationType) {
@@ -188,8 +188,8 @@ public abstract class InPhpTestCase {
 		classType = importer.types().named(classIdentifier);
 
 		assertEquals(false, classType.getIsStub());
-		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
-		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class) (classType)).getIsInterface());
+		assertTrue(classType instanceof com.feenk.pdt2famix.exporter.model.famix.Class);
+		assertEquals(false, ((com.feenk.pdt2famix.exporter.model.famix.Class) (classType)).getIsInterface());
 	}
 
 	protected void assertInterfacePresent(String interfaceIdentifier) {
@@ -199,8 +199,8 @@ public abstract class InPhpTestCase {
 		interfaceType = importer.types().named(interfaceIdentifier);
 
 		assertEquals(false, interfaceType.getIsStub());
-		assertTrue(interfaceType instanceof com.feenk.pdt2famix.model.famix.Class);
-		assertEquals(true, ((com.feenk.pdt2famix.model.famix.Class) (interfaceType)).getIsInterface());
+		assertTrue(interfaceType instanceof com.feenk.pdt2famix.exporter.model.famix.Class);
+		assertEquals(true, ((com.feenk.pdt2famix.exporter.model.famix.Class) (interfaceType)).getIsInterface());
 	}
 
 	protected void assertClassMethods(Type famixClass, String... expectedMethodNames) {
@@ -218,8 +218,8 @@ public abstract class InPhpTestCase {
 	protected void assertClassType(Type classType, String typeName) {
 		assertEquals(typeName, classType.getName());
 		assertEquals(false, classType.getIsStub());
-		assertTrue(classType instanceof com.feenk.pdt2famix.model.famix.Class);
-		assertEquals(false, ((com.feenk.pdt2famix.model.famix.Class) (classType)).getIsInterface());
+		assertTrue(classType instanceof com.feenk.pdt2famix.exporter.model.famix.Class);
+		assertEquals(false, ((com.feenk.pdt2famix.exporter.model.famix.Class) (classType)).getIsInterface());
 	}
 
 	protected void assertTraitType(Type traitType, String typeName) {
@@ -231,8 +231,8 @@ public abstract class InPhpTestCase {
 	protected void assertInterfaceType(Type interfaceType, String typeName) {
 		assertEquals(typeName, interfaceType.getName());
 		assertEquals(false, interfaceType.getIsStub());
-		assertTrue(interfaceType instanceof com.feenk.pdt2famix.model.famix.Class);
-		assertEquals(true, ((com.feenk.pdt2famix.model.famix.Class) (interfaceType)).getIsInterface());
+		assertTrue(interfaceType instanceof com.feenk.pdt2famix.exporter.model.famix.Class);
+		assertEquals(true, ((com.feenk.pdt2famix.exporter.model.famix.Class) (interfaceType)).getIsInterface());
 	}
 
 	// ASSERTIONS INHERITANCE

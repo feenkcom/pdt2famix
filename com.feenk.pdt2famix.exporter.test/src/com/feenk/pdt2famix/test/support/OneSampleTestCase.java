@@ -4,8 +4,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 
-import com.feenk.pdt2famix.Importer;
-import com.feenk.pdt2famix.model.famix.Type;
+import com.feenk.pdt2famix.exporter.inphp.Importer;
+import com.feenk.pdt2famix.exporter.model.famix.Type;
 
 public abstract class OneSampleTestCase extends InPhpTestCase {
 	protected Type type;

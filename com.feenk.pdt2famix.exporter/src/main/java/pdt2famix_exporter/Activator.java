@@ -1,18 +1,21 @@
 package pdt2famix_exporter;
 
-import org.eclipse.core.internal.runtime.InternalPlatform;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.dltk.core.IScriptProject;
 import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
-import com.feenk.pdt2famix.ExternalLogger;
+import com.feenk.pdt2famix.exporter.ExternalLogger;
 
 public class Activator implements BundleActivator {
 
 	// The plug-in ID
-	public static final String PLUGIN_ID = "pdt2famix-exporter"; //$NON-NLS-1$
+	public static final String PLUGIN_ID = "com.feenk.pdt2famix.exporter"; //$NON-NLS-1$
 		
 	// The shared instance
 	private static Activator plugin;
@@ -44,7 +47,7 @@ public class Activator implements BundleActivator {
 	}
 	
 	public final ILog getLog() {
-		return InternalPlatform.getDefault().getLog(getContext().getBundle());
+		return Platform.getLog(getContext().getBundle());
 	}
 	
 	/**
@@ -56,18 +59,19 @@ public class Activator implements BundleActivator {
 		return plugin;
 	}
 	
-	public void resetExternalLogFiles () {
+	public void resetExternalLogFiles(IScriptProject scriptProject) {
+		IPath logFolder = ResourcesPlugin.getWorkspace().getRoot().findMember(scriptProject.getPath()).getLocation();
+		externalLogger.setLoggersFolder(logFolder);
 		externalLogger.resetExternalLogFiles();
 	}
 	
 	public void trace(String message) {
 		System.out.println(message);
-		externalLogger.logTraceMessage(message, true);
-		//this.getLog().log(new Status(IStatus.INFO, Activator.PLUGIN_ID, message));
+		//externalLogger.logTraceMessage(message, true);
+		this.getLog().log(new Status(IStatus.INFO, Activator.PLUGIN_ID, message));
 	}
 
 	public void error(String message) {
-		//System.out.println(message);
 		externalLogger.logErrorMessage(message, true);
 		this.getLog().log(new Status(IStatus.ERROR, Activator.PLUGIN_ID, message));
 	}

@@ -4,9 +4,9 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.model.famix.Trait;
-import com.feenk.pdt2famix.model.famix.TraitUsage;
-import com.feenk.pdt2famix.model.famix.Type;
+import com.feenk.pdt2famix.exporter.model.famix.Trait;
+import com.feenk.pdt2famix.exporter.model.famix.TraitUsage;
+import com.feenk.pdt2famix.exporter.model.famix.Type;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class ClassWithSingleTraitUsageTest extends OneSampleTestCase {

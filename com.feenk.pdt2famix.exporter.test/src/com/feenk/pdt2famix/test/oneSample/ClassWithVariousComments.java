@@ -5,10 +5,10 @@ import static org.junit.Assert.assertEquals;
 import org.eclipse.dltk.core.ModelException;
 import org.junit.Test;
 
-import com.feenk.pdt2famix.model.famix.Attribute;
-import com.feenk.pdt2famix.model.famix.Comment;
-import com.feenk.pdt2famix.model.famix.IndexedFileAnchor;
-import com.feenk.pdt2famix.model.famix.Method;
+import com.feenk.pdt2famix.exporter.model.famix.Attribute;
+import com.feenk.pdt2famix.exporter.model.famix.Comment;
+import com.feenk.pdt2famix.exporter.model.famix.IndexedFileAnchor;
+import com.feenk.pdt2famix.exporter.model.famix.Method;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class ClassWithVariousComments extends OneSampleTestCase {

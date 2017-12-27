@@ -4,7 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import com.feenk.pdt2famix.model.famix.Method;
+import com.feenk.pdt2famix.exporter.model.famix.Method;
 import com.feenk.pdt2famix.test.support.OneSampleTestCase;
 
 public class MethodsWithPrimitiveArgumentsDefaultValuesTest extends OneSampleTestCase {

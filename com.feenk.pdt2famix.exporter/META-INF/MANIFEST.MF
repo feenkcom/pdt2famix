@@ -10,10 +10,12 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.php.core;bundle-version="5.2.0",
  org.eclipse.php.core.parser;bundle-version="5.2.0",
  com.dubture.doctrine.core;bundle-version="1.4.0",
- com.dubture.doctrine.annotation;bundle-version="1.4.0"
+ com.dubture.doctrine.annotation;bundle-version="1.4.0",
+ org.eclipse.core.commands
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ActivationPolicy: lazy
-Export-Package: com.feenk.pdt2famix,
- com.feenk.pdt2famix.model.famix
+Export-Package: com.feenk.pdt2famix.exporter,
+ com.feenk.pdt2famix.exporter.inphp,
+ com.feenk.pdt2famix.exporter.model.famix
 Bundle-ClassPath: .,
  lib/ch/akuhn/fame/1.2/fame-1.2.jar
