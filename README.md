@@ -22,13 +22,23 @@ Once Eclipse PDT is installed and you imported the project in an workspace you s
 
 ### Running pdt2famix as a plugin
 
-Copy the jars for pdt2famix (`pdt2famix-exporter_*.jar`, `pdt2famix-exporter-client_*.jar`, `pdt2famix-ui_*.jar`) in the plugins folder of the Eclipse PDT installation and restart Eclipse. pdt2famix adds a context menu action `Export MSE` available in the  `Project Explorer` view when selecting a project.
+Copy the jars for pdt2famix (`com.feenk.pdt2famix_*.jar`) in the plugins folder of the Eclipse PDT installation and restart Eclipse. pdt2famix adds a context menu action `pdt2famix -> Export MSE/ASTs` available in the  `Project Explorer` view when selecting a project.
+
+Once the pdt2famix plugins are installed in Eclipse, they can also be invoked from the command line:
+
+```./eclipse.app/Contents/MacOS/eclipse -console -nosplash -data /Users/test/workspace -application com.feenk.pdt2famix.client.application -pdt2famixProject test-project```
+
+In the previous command:
+
+- `eclipse.app` is the Eclipse app where we installed the plugings;
+- `/Users/test/workspace` is the workspace where we loaded the projects
+- `test-project` is the name of the project
+
+The parameter `-consoleLog` can further be used to show the full Eclipse log in the console.
 
 ### Running pdt2famix as a standalone application
 
 Download and extract the archive containing the pdt2famix standalone application. TODO: run pdt2famix.sh giving it the workspace where you added the project as well as the name of the project as parameters: 
 
 ```./pdt2famix.sh -data <path_to_workspace> -pdt2famixProject <project_name>```
-
-
 
