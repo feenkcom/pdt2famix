@@ -206,7 +206,7 @@ public class AnnotationResolver {
 			if (famixType instanceof AnnotationType) {
 				annotationFamixType = (AnnotationType)famixType;
 			} else {
-				//throw new RuntimeException("The type should always be an annotation type");
+				throw new RuntimeException("The type should always be an annotation type");
 			}
 		}
 		if (annotationFamixType == null) {
