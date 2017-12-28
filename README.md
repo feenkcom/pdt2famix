@@ -26,19 +26,26 @@ Copy the jars for pdt2famix (`com.feenk.pdt2famix_*.jar`) in the plugins folder 
 
 Once the pdt2famix plugins are installed in Eclipse, they can also be invoked from the command line:
 
-```./eclipse.app/Contents/MacOS/eclipse -console -nosplash -data /Users/test/workspace -application com.feenk.pdt2famix.client.application -pdt2famixProject test-project```
+```./eclipse.app/Contents/MacOS/eclipse -console -nosplash -application com.feenk.pdt2famix.client.application -data <path_to_workspace> -pdt2famixProject <project_name>```
 
 In the previous command:
 
 - `eclipse.app` is the Eclipse app where we installed the plugings;
-- `/Users/test/workspace` is the workspace where we loaded the projects
-- `test-project` is the name of the project
+- `<path_to_workspace>` is the path to the workspace where we loaded the projects;
+- `<project_name>` is the name of the project that we imported in the workspace.
 
 The parameter `-consoleLog` can further be used to show the full Eclipse log in the console.
 
 ### Running pdt2famix as a standalone application
 
-Download and extract the archive containing the pdt2famix standalone application. TODO: run pdt2famix.sh giving it the workspace where you added the project as well as the name of the project as parameters: 
+Download and extract the archive containing the pdt2famix standalone application and run:
 
-```./pdt2famix.sh -data <path_to_workspace> -pdt2famixProject <project_name>```
+```./pdt2famix.app/Contents/MacOS/pdt2famix -nosplash -data <path_to_workspace> -pdt2famixProject <project_name>```
 
+The parameter `-consoleLog` can further be used to show the full Eclipse log in the console.
+
+
+## Setting up the development environment for pdt2famix
+
+
+## Exporting pdt2famix as a product
