@@ -3,47 +3,36 @@
 <plugin>
 
    <extension
-         point="org.eclipse.ui.commands">
-      <category
-            name="Sample Category"
-            id="pdt2famix-ui.commands.category">
-      </category>
-      <command
-            name="Sample Command"
-            categoryId="pdt2famix-ui.commands.category"
-            id="pdt2famix-ui.commands.sampleCommand">
-      </command>
-   </extension>
-   <extension
          point="org.eclipse.ui.handlers">
       <handler
-            commandId="pdt2famix-ui.commands.sampleCommand"
+            commandId="com.feenk.pdt2famix.ui.commands.export"
             class="com.feenk.pdt2famix.handlers.ExportModelHandler">
       </handler>
    </extension>
    <extension
          point="org.eclipse.ui.menus">
       <menuContribution
-            locationURI="toolbar:org.eclipse.ui.main.toolbar?after=additions">
-         <toolbar
-               id="pdt2famix-ui.toolbars.sampleToolbar">
-            <command
-                  commandId="pdt2famix-ui.commands.sampleCommand"
-                  icon="icons/sample.png"
-                  tooltip="Say hello world"
-                  id="pdt2famix-ui.toolbars.sampleCommand">
-            </command>
-         </toolbar>
-      </menuContribution>
-      <menuContribution
             allPopups="false"
             locationURI="popup:org.eclipse.ui.navigator.ProjectExplorer#PopupMenu?after=additions">
-         <command
-               commandId="pdt2famix-ui.commands.projectexplorer.export"
-               id="pdt2famix-ui.projectexplorer.export"
-               label="Export MSE"
-               style="push">
-         </command>
+         <menu
+               label="pdt2famix">
+            <command
+                  commandId="com.feenk.pdt2famix.ui.commands.export"
+                  id="com.feenk.pdt2famix.ui.projectexplorer.export"
+                  label="Export MSE"
+                  style="push">
+               <visibleWhen checkEnabled="false">
+                  <with variable="activeMenuSelection">
+                     <iterate
+                           ifEmpty="false">
+                        <instanceof
+                              value="org.eclipse.core.resources.IProject">
+                        </instanceof>
+                     </iterate>
+                  </with>
+               </visibleWhen>
+            </command>
+         </menu>
       </menuContribution>
    </extension>
 
