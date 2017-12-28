@@ -67,7 +67,7 @@ public class Activator implements BundleActivator {
 	
 	public void trace(String message) {
 		System.out.println(message);
-		//externalLogger.logTraceMessage(message, true);
+		externalLogger.logTraceMessage(message, true);
 		this.getLog().log(new Status(IStatus.INFO, Activator.PLUGIN_ID, message));
 	}
 

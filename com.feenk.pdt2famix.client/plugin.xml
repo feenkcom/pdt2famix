@@ -15,11 +15,11 @@
          id="product"
          point="org.eclipse.core.runtime.products">
       <product
-            application="pdt2famix-exporter-client.application"
-            name="pdt2FamixProduct">
+            application="com.feenk.pdt2famix.client.application"
+            name="pdt2famixproduct">
          <property
                name="appName"
-               value="pdt2FamixProduct">
+               value="pdt2famix">
          </property>
       </product>
    </extension>

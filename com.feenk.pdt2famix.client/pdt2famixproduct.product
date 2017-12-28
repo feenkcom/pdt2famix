@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
-<product name="pdt2FamixProduct" uid="pdt2famixproduct" id="pdt2famix-exporter-client.product" application="pdt2famix-exporter-client.application" useFeatures="false" includeLaunchers="true">
-
+<product uid="pdt2famixproduct" id="com.feenk.pdt2famix.client.product" application="com.feenk.pdt2famix.client.application" version="1.0.0.qualifier" useFeatures="false" includeLaunchers="true">
 
    <configIni use="default">
    </configIni>
@@ -14,8 +13,6 @@
       </vmArgsMac>
    </launcherArgs>
 
-   <windowImages/>
-
 
    <launcher name="pdt2famix">
       <win useIco="false">
@@ -23,15 +20,15 @@
       </win>
    </launcher>
 
-
    <vm>
       <macos include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8</macos>
    </vm>
 
-
    <plugins>
       <plugin id="com.dubture.doctrine.annotation"/>
       <plugin id="com.dubture.doctrine.core"/>
+      <plugin id="com.feenk.pdt2famix.client"/>
+      <plugin id="com.feenk.pdt2famix.exporter"/>
       <plugin id="com.google.gson"/>
       <plugin id="com.google.guava"/>
       <plugin id="com.google.javascript"/>
@@ -215,8 +212,6 @@
       <plugin id="org.w3c.dom.events"/>
       <plugin id="org.w3c.dom.smil"/>
       <plugin id="org.w3c.dom.svg"/>
-      <plugin id="pdt2famix-exporter"/>
-      <plugin id="pdt2famix-exporter-client"/>
    </plugins>
 
    <configurations>
@@ -226,12 +221,5 @@
       <plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1" />
       <plugin id="org.eclipse.osgi" autoStart="true" startLevel="-1" />
    </configurations>
-
-   <preferencesInfo>
-      <targetfile overwrite="false"/>
-   </preferencesInfo>
-
-   <cssInfo>
-   </cssInfo>
 
 </product>
