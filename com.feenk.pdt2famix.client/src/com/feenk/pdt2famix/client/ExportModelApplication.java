@@ -1,5 +1,8 @@
 package com.feenk.pdt2famix.client;
 
+import java.util.Arrays;
+import java.util.List;
+
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspaceRoot;
@@ -18,8 +21,13 @@ public class ExportModelApplication implements IApplication {
 
 	@Override
 	public Object start(IApplicationContext context) throws Exception {
+		String projectName  = (String)getArgumentValue("-pdt2famixProject", context);
+		if (projectName == null) {
+			throw new Exception("Missing project name");
+		}
+		
 		IWorkspaceRoot root = ResourcesPlugin.getWorkspace().getRoot();
-		IProject project = root.getProject("elm-symphony");
+		IProject project = root.getProject(projectName);
 				
 		// project.open(null /* IProgressMonitor */);
 		project.close(new NullProgressMonitor() /* IProgressMonitor */);
@@ -35,6 +43,20 @@ public class ExportModelApplication implements IApplication {
 		return IApplication.EXIT_OK;
 	}
 
+	private Object getArgumentValue(String argumentName, IApplicationContext context) {
+		//Platform.getApplicationArgs();
+		List<Object> arguments = Arrays.asList((Object[])context.getArguments().get(IApplicationContext.APPLICATION_ARGS));
+		int argumentIndex = arguments.indexOf(argumentName);
+		
+		if (argumentIndex == -1) {
+			return null;
+		}
+		if (argumentIndex+1>=arguments.size()) {
+			return null;
+		}
+		return arguments.get(argumentIndex+1);
+	}
+	
 	@Override
 	public void stop() {
 		// nothing to do

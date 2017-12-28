@@ -19,7 +19,7 @@
             <command
                   commandId="com.feenk.pdt2famix.ui.commands.export"
                   id="com.feenk.pdt2famix.ui.projectexplorer.export"
-                  label="Export MSE"
+                  label="Export MSE&amp;ASTs"
                   style="push">
                <visibleWhen checkEnabled="false">
                   <with variable="activeMenuSelection">
