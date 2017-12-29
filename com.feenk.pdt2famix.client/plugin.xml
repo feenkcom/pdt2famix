@@ -19,7 +19,7 @@
             name="pdt2famixproduct">
          <property
                name="appName"
-               value="pdt2famix">
+               value="pdt2famixproduct">
          </property>
       </product>
    </extension>

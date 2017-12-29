@@ -4,10 +4,12 @@ import org.osgi.framework.BundleActivator;
 import org.osgi.framework.BundleContext;
 
 public class Activator implements BundleActivator {
+	// The plug-in ID
+	public static final String PLUGIN_ID = "com.feenk.pdt2famix.client"; //$NON-NLS-1$
 
 	private static BundleContext context;
 
-	static BundleContext getContext() {
+	public static BundleContext getContext() {
 		return context;
 	}
 

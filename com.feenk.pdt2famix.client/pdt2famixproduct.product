@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
-<product uid="pdt2famixproduct" id="com.feenk.pdt2famix.client.product" application="com.feenk.pdt2famix.client.application" version="1.0.0.qualifier" useFeatures="false" includeLaunchers="true">
+<product name="pdt2famixproduct" uid="pdt2famixproduct" id="com.feenk.pdt2famix.client.product" application="com.feenk.pdt2famix.client.application" version="1.0.0.qualifier" useFeatures="false" includeLaunchers="true">
+
 
    <configIni use="default">
    </configIni>
@@ -13,6 +14,8 @@
       </vmArgsMac>
    </launcherArgs>
 
+   <windowImages/>
+
 
    <launcher name="pdt2famix">
       <win useIco="false">
@@ -20,9 +23,11 @@
       </win>
    </launcher>
 
+
    <vm>
       <macos include="false">org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8</macos>
    </vm>
+
 
    <plugins>
       <plugin id="com.dubture.doctrine.annotation"/>
@@ -221,5 +226,12 @@
       <plugin id="org.eclipse.equinox.simpleconfigurator" autoStart="true" startLevel="1" />
       <plugin id="org.eclipse.osgi" autoStart="true" startLevel="-1" />
    </configurations>
+
+   <preferencesInfo>
+      <targetfile overwrite="false"/>
+   </preferencesInfo>
+
+   <cssInfo>
+   </cssInfo>
 
 </product>
