@@ -26,7 +26,7 @@ Copy the jars for pdt2famix (`com.feenk.pdt2famix_*.jar`) in the plugins folder 
 
 Once the pdt2famix plugins are installed in Eclipse, they can also be invoked from the command line:
 
-```./eclipse.app/Contents/MacOS/eclipse -console -nosplash -application com.feenk.pdt2famix.client.application -data <path_to_workspace> -pdt2famixProject <project_name>```
+```./eclipse.app/Contents/MacOS/eclipse -nosplash -application com.feenk.pdt2famix.client.application -data <path_to_workspace> -pdt2famixProject <project_name>```
 
 In the previous command:
 
@@ -40,7 +40,7 @@ The parameter `-consoleLog` can further be used to show the full Eclipse log in 
 
 Download and extract the archive containing the pdt2famix standalone application and run:
 
-```./pdt2famix.app/Contents/MacOS/pdt2famix -nosplash -data <path_to_workspace> -pdt2famixProject <project_name>```
+```./pdt2famix.app/Contents/MacOS/pdt2famix -data <path_to_workspace> -pdt2famixProject <project_name>```
 
 The parameter `-consoleLog` can further be used to show the full Eclipse log in the console.
 
