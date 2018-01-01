@@ -154,7 +154,9 @@ public class Importer {
 	public ISourceModule getCurrentSourceModel() {return currentSourceModel;}
 	public void setCurrentSourceModel(ISourceModule currentSourceModel) {this.currentSourceModel = currentSourceModel;}
 	
-	public String getCurrentFilePath() {return getCurrentSourceModel().getPath().makeRelative().toString(); }
+	public String getCurrentFilePath() {
+		// Remove the first segment in order to remove the name of the folder containing the project.
+		return getCurrentSourceModel().getPath().makeRelative().removeFirstSegments(1).toString(); }
 	
 	public Collection currentInvocations() {
 		return (Collection) repository().getElements().stream()
