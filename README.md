@@ -62,7 +62,7 @@ This section provides details for setting up a development environment for pdt2f
 First you need to configure eclipse:
 
 - download (Eclipse for RCP and RAP Developers)[https://www.eclipse.org/downloads/eclipse-packages/]. pdt2famix uses Eclipse Oxigen;
-- install Eclipse PDT using the update site (Eclipse PDT)[https://www.eclipse.org/pdt/#download]. The version used by pdt2famix is Eclipse PDT 5.2. Install also the Source Code for PDT from the SDK (ot the entire SDK);
+- install Eclipse PDT using the update site (Eclipse PDT)[https://www.eclipse.org/pdt/#download]. The version used by pdt2famix is Eclipse PDT 5.2. Install also the Source Code for PDT from the SDK (or the entire SDK);
 - install the Symphony plugin ([symfony.dubture.com](http://symfony.dubture.com));
 - configure the paths to the `php` executable (optional).
 
@@ -71,6 +71,8 @@ Next clone the pdt2famix repository, and import all the Java projects into the w
 To launch pdt2famix in a new Eclipse installation create a launch configuration for an `Eclipse Application`. pdt2famix will add a context menu to the `Project Explorer` view.
 
 To launch pdt2famix as a product (headless) create a product configuration that runs `com.feenk.pdt2famix.client.product`. You can also create a launch configuration that runs the application `com.feenk.pdt2famix.client.application`.
+
+To run the tests associated with pdt2famix create a new launch configuration for `JUnit Plug-in Test` and select to run the tests from the project `com.feenk.pdt2famix.exporter.test`. The current version of pdt2famix needs to run the tests in a workspace where the project `com.feenk.pdt2famix.exporter.samples` is already loaded. Hence, before running the tests you need to configure an new workspace where this project is loaded and update the `Location` parameter of the launch configuration to point to that workspace. Then make sure the launch configuration only clears the log and not the entire workspace before running the tests, as otherwise the project will be removed before running the tests.
 
 ## Releasing pdt2famix
 
