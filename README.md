@@ -85,9 +85,9 @@ For exporting a headless eclipse application use the the wizard `Eclipse product
 
 ## Creating a product for exporting pdt2famix
 
-Exporting pdt2famix as an Eclipse plugins is done using a product. The easiest way to create a new plugin is from an exising launch configuration. To create a new configuration for pdt2famix:
+Exporting pdt2famix as an Eclipse plugins is done using a product configuration. The easiest way to create a new product configuration is from an exising launch configuration. To create a new product configuration for pdt2famix:
 
-- create a new launcg configuration for an `Eclipse Application`
+- create a new launch configuration for an `Eclipse Application`
 - as `Program to run` select `Run an application` and then use `com.feenk.pdt2famix.client.application` (this is the application provided by pdt2famix for running the exporter);
 - in the `Plug-ins` launch the configuration with `plug-ins selected below only` and select `com.feenk.pdt2famix.client` and `com.feenk.pdt2famix.exporter`;
 - use `Add required plug-ins` twice to add all dependencies;
