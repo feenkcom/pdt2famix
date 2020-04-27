@@ -1,5 +1,6 @@
 # pdt2famix
-PHP importer for Moose based on Eclipse PDT
+pdt2famix takes PHP code and produces MSE files that can be imported into Glamorous Toolkit. Based on Eclipse PDT.
+
 
 ## Setting up the project 
 
@@ -96,4 +97,3 @@ Exporting pdt2famix as an Eclipse plugins is done using a product configuration.
 - run and test that the configuration works
 
 Next create a new `Product Configuration` using the previously defined launch configuration. In `Product Definition` use `com.feenk.pdt2famix.client.application` as an application. For `Product` create a new one or use an exiting one. The `Product` referes to extensions for the extension point `com.eclipse.core.runtime.products` in the project `com.feenk.pdt2famix.client`.
-
